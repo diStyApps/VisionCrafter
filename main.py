@@ -124,7 +124,7 @@ def main():
                                         [
                                             sg.T('Audio models'),
                                             sg.Combo(audio_model_list, default_value="melody", size=(40, 10), key="-selected_audio_model-",expand_x=False,enable_events=True, readonly=True),                                               
-                                            sg.Checkbox('Add to video',k='-add_music_cb-',default=True),  
+                                            sg.Checkbox('Add to video',k='-add_music_cb-',default=False),  
                                         ]  
                                                             
                                         ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True
