@@ -39,10 +39,7 @@ import numpy as np
 import tempfile
 from pydub import AudioSegment
 import shutil
-import tempfile
 import logging
-from pydub import AudioSegment
-import tempfile
 # -------------------------------------------------------------------
 # Constants, defaults, Base64 icons
 
@@ -52,10 +49,15 @@ def main():
     sg.theme('Dark Gray 15')
     total_steps_progress_bar = 0
     # jt.create_preferences_init()
-    file_list = []
+    models_list = []
+    lora_models_list = [
+        ""
+    ]
 
     add_music_post_video_path =''
-    set_models_path(file_list, extensions, sg.user_settings_get_entry("models_path", ''))
+    set_models_path(models_list, extensions, sg.user_settings_get_entry("models_path", ''))
+    set_models_path(lora_models_list, extensions, sg.user_settings_get_entry("lora_models_path", ''))
+
 
     left_col_n = [
                     [
@@ -283,11 +285,21 @@ def main():
             [
                 [
                             sg.Text('Model'),
-                            sg.Combo(sorted(file_list), default_value=sg.user_settings_get_entry("selected_model", ''), size=(80, 1), key="-selected_model-",expand_x=False,enable_events=True, readonly=True),  
+                            sg.Combo(sorted(models_list), default_value=sg.user_settings_get_entry("selected_model", ''), size=(80, 1), key="-selected_model-",expand_x=False,enable_events=True, readonly=True),  
                             sg.I(visible=False,key='-models_path-',enable_events=True),
-                            sg.FolderBrowse('Set models folder',enable_events=True)
+                            sg.FolderBrowse('Set models folder',enable_events=True),
+
+
+                            sg.In(0.8,k='-lora_alpha-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
+                            sg.Slider(default_value=0.8,range=((0,1)),resolution=0.1,
+                            orientation='horizontal',disable_number_display=True,enable_events=True,k='-lora_alpha_slider-',expand_x=False,s=(15,10)),                                 
+                            sg.Text('Lora'),
+                            sg.Combo(sorted(lora_models_list), default_value=sg.user_settings_get_entry("selected_lora", ''), size=(40, 1), key="-selected_lora-",expand_x=False,enable_events=True, readonly=True),  
+                            sg.I(visible=False,key='-lora_path-',enable_events=True),
+                            sg.FolderBrowse('Set lora folder',enable_events=True)                            
+
                 ],
-            ],    
+                    ],    
             [
                         cpbar.full_layout("-pbar_steps-",visible=True,it_name="step"),
                         cpbar.min_layout("-pbar_frames-",visible=True,it_name="fr"),
@@ -320,15 +332,30 @@ def main():
         if event == '-models_path-':
             models_path_directory = sg.user_settings_get_entry("models_path", sg.user_settings_set_entry("models_path", values['-models_path-']))
             print("models_path_directory",models_path_directory)
-            file_list = []
+            models_list = []
             if models_path_directory:
                 for filename in os.listdir(models_path_directory):
                     if filename.endswith(tuple(extensions)):
-                        file_list.append(filename)
-                window['-selected_model-'].update(values=sorted(file_list))
+                        models_list.append(filename)
+                window['-selected_model-'].update(values=sorted(models_list))
                 
         if event == '-selected_model-':
             sg.user_settings_set_entry("selected_model", values['-selected_model-'])
+
+
+
+        if event == '-lora_path-':
+            lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", sg.user_settings_set_entry("lora_models_path", values['-lora_path-']))
+            print("lora_models_path_directory",lora_models_path_directory)
+            models_list = []
+            if lora_models_path_directory:
+                for filename in os.listdir(lora_models_path_directory):
+                    if filename.endswith(tuple(extensions)):
+                        models_list.append(filename)
+                window['-selected_lora-'].update(values=sorted(models_list))
+
+        if event == '-selected_lora-':
+            sg.user_settings_set_entry("selected_lora", values['-selected_lora-'])
 
         if event == '-generate-':
             prompts  = []
@@ -351,13 +378,26 @@ def main():
             length = (length * 8)
             context_length=int(values['-context_length-'])
             context_stride = int(values['-context_stride-'])
+            lora_alpha = float(values['-lora_alpha-'])
 
             selected_model = sg.user_settings_get_entry("selected_model", '')
             models_path_directory = sg.user_settings_get_entry("models_path", '')
-            models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+
+            selected_lora = sg.user_settings_get_entry("selected_lora", '')
+            lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
 
 
-            base = ""
+            if selected_lora:
+                print("selected_lora",selected_lora)
+                base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+                models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
+            else:
+                print("no lora",selected_model)
+                models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+                base = ""
+
+            # models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+            # base = ""
             motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
             motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15.ckpt"))
             pretrained_model= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/StableDiffusion/stable-diffusion-v1-5"))
@@ -381,7 +421,7 @@ def main():
                     seed=seed,
                     steps=steps,
                     guidance_scale=cfg_scale,
-                    lora_alpha=0.8,
+                    lora_alpha=lora_alpha,
                     prompt=prompts,
                     n_prompt=negative_prompts
                 )        
@@ -484,13 +524,10 @@ def main():
             add_music_post_video_path = values['-add_music_post_video_folder-']
             add_music_post_video_path_type = "folder"
 
-
         if event == '-length_slider-': 
             length = int(values['-length_slider-'])
             window['-duration_music_post_slider-'].update(length)
         
-
-
         if event == '-add_music_post-':
             if values['-add_music_post_video_folder-'] or values['-add_music_post_video_file-']:
                 media_list = inst.media_list_new([])
@@ -648,6 +685,11 @@ def sliders(values,event,window):
     slider_int('-context_stride_slider-','-context_stride-',values,event,window)
     slider_int('-duration_music_post_slider-','-duration_music_post-',values,event,window)
     slider_int('-length_slider-','-duration_music_post-',values,event,window)
+    slider_float('-lora_alpha_slider-','-lora_alpha-',values,event,window)
+
+
+
+    
 
 #endregion sliders
     
@@ -663,6 +705,21 @@ def set_models_path(file_list, extensions, models_path_directory):
         models_path_directory = sg.user_settings_get_entry("models_path", '')
         if models_path_directory:
             for filename in os.listdir(models_path_directory):
+                if filename.endswith(tuple(extensions)):
+                    file_list.append(filename)
+
+def set_lora_models_path(file_list, extensions, lora_models_path_directory):
+    if lora_models_path_directory:
+        # print('lora_models_path_directory set',lora_models_path_directory)
+        for filename in os.listdir(lora_models_path_directory):
+            if filename.endswith(tuple(extensions)):
+                file_list.append(filename)    
+    else:
+        # print('no lora_models_path_directory set yet')
+        sg.user_settings_set_entry("lora_models_path", 'models/checkpoints')
+        lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
+        if lora_models_path_directory:
+            for filename in os.listdir(lora_models_path_directory):
                 if filename.endswith(tuple(extensions)):
                     file_list.append(filename)
 
