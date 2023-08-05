@@ -46,538 +46,541 @@ import logging
 current_folder = os.getcwd()
 
 def main(): 
-    sg.theme('Dark Gray 15')
-    total_steps_progress_bar = 0
-    # jt.create_preferences_init()
-    models_list = []
-    lora_models_list = [
-        ""
-    ]
-
-    add_music_post_video_path =''
-    set_models_path(models_list, extensions, sg.user_settings_get_entry("models_path", ''))
-    set_models_path(lora_models_list, extensions, sg.user_settings_get_entry("lora_models_path", ''))
-
-
-    left_col_n = [
-                    [
-                        sg.Frame('Prompt',[
-                            [    
-                                sg.Frame('',[
-                                        [    
-                                            sg.MLine("",key="-prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                            autoscroll=False, auto_refresh=True,size=(40,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
-                                        ],    
-                                                            
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                    ),
-                            ],    
-                                                
-                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],
-                    [
-                        sg.Frame('Negative',[
-                            [    
-                                sg.Frame('',[
-                                    [    
-                                        sg.MLine("",key="-negative_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                        autoscroll=False, auto_refresh=True,size=(10,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
-                                    ],     
-                                                            
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                    ),
-                            ],    
-                                                
-                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],     
-                    [
-                        sg.Combo(prompts_list, default_value=sg.user_settings_get_entry("selected_prompt", ''), size=(40, 10), key="-selected_prompt-",expand_x=True,enable_events=True, readonly=True), 
-                        sg.Button('Set',k='-set_prompt-'),
-                        
-                        sg.Combo(prompts_neg_list, default_value=sg.user_settings_get_entry("selected_neg_prompt", ''), size=(40, 10), key="-selected_neg_prompt-",expand_x=True,enable_events=True, readonly=True),  
-                        sg.Button('Set',k='-set_neg_prompt-') ,
-                    ],                      
-                    [
-                        sg.Frame('Music',[
-                            [    
-                                    sg.Frame('Prompt',[
-                                        [    
-                                            sg.Frame('',[
-                                                [    
-                                                    sg.MLine("Harp,bells,fluts,fantasy,nightelf,wind",key="-add_music_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                                    autoscroll=False, auto_refresh=True,size=(2,1),pad=(5,5),expand_x=True,expand_y=False,font="Ariel 11"),
-                                                ],     
-                                                                        
-                                                    ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                                ),
-                                        ], 
-                                        [
-                                            sg.Combo(music_prompts_list, default_value=sg.user_settings_get_entry("selected_music_prompt", ''), size=(40, 10), key="-selected_music_prompt-",expand_x=True,enable_events=True, readonly=True), 
-                                            sg.Button('Set',k='-set_music_prompt-'),    
-                                        ],         
-                                                                       
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                                    ),
-                            ],   
-                            [ 
-                                    sg.Frame('',[  
-                                        [
-                                            sg.T('Audio models'),
-                                            sg.Combo(audio_model_list, default_value="melody", size=(40, 10), key="-selected_audio_model-",expand_x=False,enable_events=True, readonly=True),                                               
-                                            sg.Checkbox('Add to video',k='-add_music_cb-',default=False),  
-                                        ]  
-                                                            
-                                        ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True
-                                    ),
-                            ],                                            
-                            ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],                       
-        
-                    [
-                        sg.Frame('',[
-                                                        [
-                                sg.T('Seed',s=(10,1)),
-                                sg.In(-1,k='-seed-',s=(20,5),justification='center'),
-                                sg.Slider(default_value=-1,range=((-1,99999999999999)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-seed_slider-',expand_x=True,s=(10,10)), 
-                            ],  
-
-                            [
-                                sg.T('Steps',s=(10,1)),
-                                sg.In(20,k='-sampling_steps-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=20,range=((1,150)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-sampling_steps_slider-',expand_x=True,s=(10,10)), 
-                                sg.T('Batch count',s=(20,1)),
-                                sg.In(1,k='-batch_count-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=1,range=((1,100)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-batch_count_slider-',expand_x=True,s=(10,10)),                 
-                            ],    
-                            [
-                                sg.T('Width',s=(10,1)),
-                                sg.In(512,k='-width-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=512,range=((256,2048)),resolution=32,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-width_slider-',expand_x=True,s=(10,10)),   
-                                sg.T('Height',s=(10,1)),
-                                sg.In(512,k='-height-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=512,range=((256,2048)),resolution=32,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-height_slider-',expand_x=True,s=(10,10)),                 
-                            ],              
-                            [
-                                sg.T('CFG Scale',s=(10,1)),
-                                sg.In(7.5,k='-cfg_scale-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=7.5,range=((1,30)),resolution=0.5,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-cfg_scale_slider-',expand_x=True,s=(10,10)), 
-                            ],  
-         
-
-                            [
-                                sg.T('Length in sec',s=(10,1)),
-                                sg.In(2,k='-length-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                                sg.Slider(default_value=2,range=((1,6)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-length_slider-',expand_x=True,s=(10,10)),   
-                                sg.T('Motion modules',s=(15,1)),
-                                sg.Checkbox('1.4',k='-motion_module_1.4-',default=True),
-                                sg.Checkbox('1.5',k='-motion_module_1.5-',default=False),  
-
-                                sg.T('Context length',s=(12,1),visible=False),
-                                sg.In(0,k='-context_length-',s=(5,5),justification='center',visible=False),
-                                sg.Slider(default_value=0,range=((0,48)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_length_slider-',expand_x=True,s=(10,10),visible=False),          
-                                sg.T('Context stride',s=(12,1),visible=False),
-                                sg.In(0,k='-context_stride-',s=(5,5),justification='center',visible=False),
-                                sg.Slider(default_value=0,range=((0,48)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_stride_slider-',expand_x=True,s=(10,10),visible=False),   
-                            ],          
-                        ],expand_x=True,relief=sg.RELIEF_SOLID,border_width=0,visible=True),   
-                    ],   
-                    # terminal     
-                    [
-                        sg.MLine( k='-ML2-', reroute_stdout=True,write_only=False,reroute_cprint=True,
-                        background_color='black', text_color='white', autoscroll=True, auto_refresh=True,expand_x=True,expand_y=True,visible=True)
-                    ],
+    try:
+        sg.theme('Dark Gray 15')
+        total_steps_progress_bar = 0
+        # jt.create_preferences_init()
+        models_list = []
+        lora_models_list = [
+            ""
         ]
 
-    center_col_n = [     
-        [
-                sg.Frame('',[
-                
-                    [sg.Image("",expand_x=True,k='-vid_out-',background_color="black")
-                    ],               
-                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
-        ], 
-        [
+        add_music_post_video_path =''
+        set_models_path(models_list, extensions, sg.user_settings_get_entry("models_path", ''))
+        set_models_path(lora_models_list, extensions, sg.user_settings_get_entry("lora_models_path", ''))
+
+
+        left_col_n = [
+                        [
+                            sg.Frame('Prompt',[
+                                [    
+                                    sg.Frame('',[
+                                            [    
+                                                sg.MLine("",key="-prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
+                                                autoscroll=False, auto_refresh=True,size=(40,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
+                                            ],    
+                                                                
+                                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
+                                        ),
+                                ],    
+                                                    
+                                ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
+                            ),
+                        ],
+                        [
+                            sg.Frame('Negative',[
+                                [    
+                                    sg.Frame('',[
+                                        [    
+                                            sg.MLine("",key="-negative_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
+                                            autoscroll=False, auto_refresh=True,size=(10,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
+                                        ],     
+                                                                
+                                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
+                                        ),
+                                ],    
+                                                    
+                                ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
+                            ),
+                        ],     
+                        [
+                            sg.Combo(prompts_list, default_value=sg.user_settings_get_entry("selected_prompt", ''), size=(40, 10), key="-selected_prompt-",expand_x=True,enable_events=True, readonly=True), 
+                            sg.Button('Set',k='-set_prompt-'),
+                            
+                            sg.Combo(prompts_neg_list, default_value=sg.user_settings_get_entry("selected_neg_prompt", ''), size=(40, 10), key="-selected_neg_prompt-",expand_x=True,enable_events=True, readonly=True),  
+                            sg.Button('Set',k='-set_neg_prompt-') ,
+                        ],                      
+                        [
+                            sg.Frame('Music',[
+                                [    
+                                        sg.Frame('Prompt',[
+                                            [    
+                                                sg.Frame('',[
+                                                    [    
+                                                        sg.MLine("Harp,bells,fluts,fantasy,nightelf,wind",key="-add_music_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
+                                                        autoscroll=False, auto_refresh=True,size=(2,1),pad=(5,5),expand_x=True,expand_y=False,font="Ariel 11"),
+                                                    ],     
+                                                                            
+                                                        ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
+                                                    ),
+                                            ], 
+                                            [
+                                                sg.Combo(music_prompts_list, default_value=sg.user_settings_get_entry("selected_music_prompt", ''), size=(40, 10), key="-selected_music_prompt-",expand_x=True,enable_events=True, readonly=True), 
+                                                sg.Button('Set',k='-set_music_prompt-'),    
+                                            ],         
+                                                                           
+                                            ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
+                                        ),
+                                ],   
+                                [ 
+                                        sg.Frame('',[  
+                                            [
+                                                sg.T('Audio models'),
+                                                sg.Combo(audio_model_list, default_value="melody", size=(40, 10), key="-selected_audio_model-",expand_x=False,enable_events=True, readonly=True),                                               
+                                                sg.Checkbox('Add to video',k='-add_music_cb-',default=False),  
+                                            ]  
+                                                                
+                                            ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True
+                                        ),
+                                ],                                            
+                                ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
+                            ),
+                        ],                       
             
-            btn('previous'), btn('play'), btn('next'), btn('stop'),sg.Button('Open Folder',k='-output_open_folder-',expand_x=True),
-        ],        
-        [
-            sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),visible=True),
-        ],  
-        [
-                sg.Frame('Add Post Music ',[
-                [
-                    sg.T('File',s=(10,1)),
-                    sg.Input(k='-add_music_post_video_file-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-post_process_FileBrowse-',file_types=(video_file_ext)) ,     
-                ],
-                [ 
-                    sg.T('Folder',s=(10,1)),
-                    sg.Input(k='-add_music_post_video_folder-',enable_events=True,expand_x=True),sg.FolderBrowse(k=f'-post_process_FolderBrowse-') ,        
-                ],                
-                [
+                        [
+                            sg.Frame('',[
+                                                            [
+                                    sg.T('Seed',s=(10,1)),
+                                    sg.In(-1,k='-seed-',s=(20,5),justification='center'),
+                                    sg.Slider(default_value=-1,range=((-1,99999999999999)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-seed_slider-',expand_x=True,s=(10,10)), 
+                                ],  
 
-                    sg.T('Duration',s=(20,1)),
-                    sg.In(2,k='-duration_music_post-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                    sg.Slider(default_value=2,range=((1,30)),resolution=1,
-                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-duration_music_post_slider-',expand_x=True,s=(10,10)),        
+                                [
+                                    sg.T('Steps',s=(10,1)),
+                                    sg.In(20,k='-sampling_steps-',s=(5,5),justification='center'),
+                                    sg.Slider(default_value=20,range=((1,150)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-sampling_steps_slider-',expand_x=True,s=(10,10)), 
+                                    sg.T('Batch count',s=(20,1)),
+                                    sg.In(1,k='-batch_count-',s=(5,5),justification='center'),
+                                    sg.Slider(default_value=1,range=((1,100)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-batch_count_slider-',expand_x=True,s=(10,10)),                 
+                                ],    
+                                [
+                                    sg.T('Width',s=(10,1)),
+                                    sg.In(512,k='-width-',s=(5,5),justification='center'),
+                                    sg.Slider(default_value=512,range=((256,2048)),resolution=32,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-width_slider-',expand_x=True,s=(10,10)),   
+                                    sg.T('Height',s=(10,1)),
+                                    sg.In(512,k='-height-',s=(5,5),justification='center'),
+                                    sg.Slider(default_value=512,range=((256,2048)),resolution=32,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-height_slider-',expand_x=True,s=(10,10)),                 
+                                ],              
+                                [
+                                    sg.T('CFG Scale',s=(10,1)),
+                                    sg.In(7.5,k='-cfg_scale-',s=(5,5),justification='center'),
+                                    sg.Slider(default_value=7.5,range=((1,30)),resolution=0.5,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-cfg_scale_slider-',expand_x=True,s=(10,10)), 
+                                ],  
+             
 
+                                [
+                                    sg.T('Length in sec',s=(10,1)),
+                                    sg.In(2,k='-length-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
+                                    sg.Slider(default_value=2,range=((1,60)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-length_slider-',expand_x=True,s=(10,10)),   
+                                    sg.T('Motion modules',s=(15,1)),
+                                    sg.Checkbox('1.4',k='-motion_module_1.4-',default=True),
+                                    sg.Checkbox('1.5',k='-motion_module_1.5-',default=False),  
 
-                ],   
-                [
-                    sg.Button('Add/Replace',k='-add_music_post-',expand_x=True),
-                    # sg.Button('Play',k='-play_music_post-',expand_x=True),
-                ]            
-                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
-        ],            
-    ]
+                                    sg.T('Context length',s=(12,1),visible=False),
+                                    sg.In(0,k='-context_length-',s=(5,5),justification='center',visible=False),
+                                    sg.Slider(default_value=0,range=((0,48)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_length_slider-',expand_x=True,s=(10,10),visible=False),          
+                                    sg.T('Context stride',s=(12,1),visible=False),
+                                    sg.In(0,k='-context_stride-',s=(5,5),justification='center',visible=False),
+                                    sg.Slider(default_value=0,range=((0,48)),resolution=1,
+                                    orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_stride_slider-',expand_x=True,s=(10,10),visible=False),   
+                                ],          
+                            ],expand_x=True,relief=sg.RELIEF_SOLID,border_width=0,visible=True),   
+                        ],   
+                        # terminal     
+                        [
+                            sg.MLine( k='-ML2-', reroute_stdout=True,write_only=False,reroute_cprint=True,
+                            background_color='black', text_color='white', autoscroll=True, auto_refresh=True,expand_x=True,expand_y=True,visible=True)
+                        ],
+            ]
 
-    #Output
-    right_col = [
-        #Output display
-        [
-            sg.Frame('Output',[
-                    # [sg.Text('FileName',k='-OUTPUT_IN-',enable_events=True,expand_x=True)],
-                    [sg.Image('',expand_x=True,k='-OUTPUT_FILE-')],
-                ],expand_x=True,element_justification='center',vertical_alignment='center',s=(400,400),visible=True
-            )    
-        ],
-        #Output controls
-        [
-            sg.Button('Preview',k='-output_preview-',expand_x=True),
-            sg.Button('Open Folder',k='-output_reveal_folder-',expand_x=True),
-        ],          
-
-        [
-            sg.Frame('Post Process',[
-                    [
-                        sg.Text('0 x 0',k='-post_process_file_size_display-',expand_x=True)
-                    ],
-                    [
-                        sg.Input(k='-post_process_file_input-',enable_events=True,expand_x=True),sg.FileBrowse(initial_folder='./output/videos',k=f'-post_process_FileBrowse-',file_types=(video_file_ext)) 
-                    ],
-                ],expand_x=True,visible=False
-            )
-        ],             
-    ]
-
-    layout = [ 
-
+        center_col_n = [     
             [
-                sg.Frame('',[
-                    [                      
-                            sg.Text('Help support this project'),
-                            sg.Button(image_data=patreon,key='PATREON_BTN_KEY',button_color=(GRAY_9900)),            
-                    ],
-                    ],expand_x=True,element_justification='r',border_width=0,pad=(0,0),relief=sg.RELIEF_FLAT
-                ),
+                    sg.Frame('',[
+                    
+                        [sg.Image("",expand_x=True,k='-vid_out-',background_color="black")
+                        ],               
+                    ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
+            ], 
+            [
+                
+                btn('previous'), btn('play'), btn('next'), btn('stop'),sg.Button('Open Folder',k='-output_open_folder-',expand_x=True),
             ],        
             [
+                sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),visible=True),
+            ],  
+            [
+                    sg.Frame('Add Post Music ',[
+                    [
+                        sg.T('File',s=(10,1)),
+                        sg.Input(k='-add_music_post_video_file-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-post_process_FileBrowse-',file_types=(video_file_ext)) ,     
+                    ],
+                    [ 
+                        sg.T('Folder',s=(10,1)),
+                        sg.Input(k='-add_music_post_video_folder-',enable_events=True,expand_x=True),sg.FolderBrowse(k=f'-post_process_FolderBrowse-') ,        
+                    ],                
+                    [
+
+                        sg.T('Duration',s=(20,1)),
+                        sg.In(2,k='-duration_music_post-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
+                        sg.Slider(default_value=2,range=((1,30)),resolution=1,
+                        orientation='horizontal',disable_number_display=True,enable_events=True,k='-duration_music_post_slider-',expand_x=True,s=(10,10)),        
+
+
+                    ],   
+                    [
+                        sg.Button('Add/Replace',k='-add_music_post-',expand_x=True),
+                        # sg.Button('Play',k='-play_music_post-',expand_x=True),
+                    ]            
+                    ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
+            ],            
+        ]
+
+        #Output
+        right_col = [
+            #Output display
+            [
+                sg.Frame('Output',[
+                        # [sg.Text('FileName',k='-OUTPUT_IN-',enable_events=True,expand_x=True)],
+                        [sg.Image('',expand_x=True,k='-OUTPUT_FILE-')],
+                    ],expand_x=True,element_justification='center',vertical_alignment='center',s=(400,400),visible=True
+                )    
+            ],
+            #Output controls
+            [
+                sg.Button('Preview',k='-output_preview-',expand_x=True),
+                sg.Button('Open Folder',k='-output_reveal_folder-',expand_x=True),
+            ],          
+
+            [
+                sg.Frame('Post Process',[
+                        [
+                            sg.Text('0 x 0',k='-post_process_file_size_display-',expand_x=True)
+                        ],
+                        [
+                            sg.Input(k='-post_process_file_input-',enable_events=True,expand_x=True),sg.FileBrowse(initial_folder='./output/videos',k=f'-post_process_FileBrowse-',file_types=(video_file_ext)) 
+                        ],
+                    ],expand_x=True,visible=False
+                )
+            ],             
+        ]
+
+        layout = [ 
+
                 [
-                            sg.Text('Model'),
-                            sg.Combo(sorted(models_list), default_value=sg.user_settings_get_entry("selected_model", ''), size=(80, 1), key="-selected_model-",expand_x=False,enable_events=True, readonly=True),  
-                            sg.I(visible=False,key='-models_path-',enable_events=True),
-                            sg.FolderBrowse('Set models folder',enable_events=True),
+                    sg.Frame('',[
+                        [                      
+                                sg.Text('Help support this project'),
+                                sg.Button(image_data=patreon,key='PATREON_BTN_KEY',button_color=(GRAY_9900)),            
+                        ],
+                        ],expand_x=True,element_justification='r',border_width=0,pad=(0,0),relief=sg.RELIEF_FLAT
+                    ),
+                ],        
+                [
+                    [
+                                sg.Text('Model'),
+                                sg.Combo(sorted(models_list), default_value=sg.user_settings_get_entry("selected_model", ''), size=(80, 1), key="-selected_model-",expand_x=False,enable_events=True, readonly=True),  
+                                sg.I(visible=False,key='-models_path-',enable_events=True),
+                                sg.FolderBrowse('Set models folder',enable_events=True),
 
 
-                            sg.In(0.8,k='-lora_alpha-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                            sg.Slider(default_value=0.8,range=((0,1)),resolution=0.1,
-                            orientation='horizontal',disable_number_display=True,enable_events=True,k='-lora_alpha_slider-',expand_x=False,s=(15,10)),                                 
-                            sg.Text('Lora'),
-                            sg.Combo(sorted(lora_models_list), default_value=sg.user_settings_get_entry("selected_lora", ''), size=(40, 1), key="-selected_lora-",expand_x=False,enable_events=True, readonly=True),  
-                            sg.I(visible=False,key='-lora_path-',enable_events=True),
-                            sg.FolderBrowse('Set lora folder',enable_events=True)                            
+                                sg.In(0.8,k='-lora_alpha-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
+                                sg.Slider(default_value=0.8,range=((0,1)),resolution=0.1,
+                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-lora_alpha_slider-',expand_x=False,s=(15,10)),                                 
+                                sg.Text('Lora'),
+                                sg.Combo(sorted(lora_models_list), default_value=sg.user_settings_get_entry("selected_lora", ''), size=(40, 1), key="-selected_lora-",expand_x=False,enable_events=True, readonly=True),  
+                                sg.I(visible=False,key='-lora_path-',enable_events=True),
+                                sg.FolderBrowse('Set lora folder',enable_events=True)                            
 
-                ],
-                    ],    
-            [
-                        cpbar.full_layout("-pbar_steps-",visible=True,it_name="step"),
-                        cpbar.min_layout("-pbar_frames-",visible=True,it_name="fr"),
-                        cpbar.full_layout("-pbar_samples-",visible=True,it_name="sample",show_it_per_sec=False),
-            ],                          
-            [
-                sg.Column(left_col_n, key='c1', element_justification='l', expand_x=True,expand_y=True,visible=True),
-                sg.Column(center_col_n, key='c2', element_justification='c', expand_x=True,expand_y=True,visible=True),
-                #Output
-                sg.Column(right_col, key='c3', element_justification='r', expand_x=True,expand_y=True,visible=False)
-            ],      
-    ]
+                    ],
+                        ],    
+                [
+                            cpbar.full_layout("-pbar_steps-",visible=True,it_name="step"),
+                            cpbar.min_layout("-pbar_frames-",visible=True,it_name="fr"),
+                            cpbar.full_layout("-pbar_samples-",visible=True,it_name="sample",show_it_per_sec=False),
+                ],                          
+                [
+                    sg.Column(left_col_n, key='c1', element_justification='l', expand_x=True,expand_y=True,visible=True),
+                    sg.Column(center_col_n, key='c2', element_justification='c', expand_x=True,expand_y=True,visible=True),
+                    #Output
+                    sg.Column(right_col, key='c3', element_justification='r', expand_x=True,expand_y=True,visible=False)
+                ],      
+        ]
 
-    window = sg.Window(f'{NAME} - {VER}',layout,finalize=True, resizable=True)
-    window.Maximize()
-    flatten_ui_elements(window)
-    window['-vid_out-'].expand(True, True)
-    inst, list_player, media_list = init_vlc_player(window)
+        window = sg.Window(f'{NAME} - {VER}',layout,finalize=True, resizable=True)
+        window.Maximize()
+        flatten_ui_elements(window)
+        window['-vid_out-'].expand(True, True)
+        inst, list_player, media_list = init_vlc_player(window)
 
-    while True:
-        event, values = window.read(timeout=1000)
-        if event == sg.WIN_CLOSED:
-            break
-        def setup():
-            pass
-        # setup()
+        while True:
+            event, values = window.read(timeout=1000)
+            if event == sg.WIN_CLOSED:
+                break
+            def setup():
+                pass
+            # setup()
 
-        sliders(values,event,window)
+            sliders(values,event,window)
 
-        if event == '-models_path-':
-            models_path_directory = sg.user_settings_get_entry("models_path", sg.user_settings_set_entry("models_path", values['-models_path-']))
-            print("models_path_directory",models_path_directory)
-            models_list = []
-            if models_path_directory:
-                for filename in os.listdir(models_path_directory):
-                    if filename.endswith(tuple(extensions)):
-                        models_list.append(filename)
-                window['-selected_model-'].update(values=sorted(models_list))
-                
-        if event == '-selected_model-':
-            sg.user_settings_set_entry("selected_model", values['-selected_model-'])
-
-
-
-        if event == '-lora_path-':
-            lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", sg.user_settings_set_entry("lora_models_path", values['-lora_path-']))
-            print("lora_models_path_directory",lora_models_path_directory)
-            models_list = []
-            if lora_models_path_directory:
-                for filename in os.listdir(lora_models_path_directory):
-                    if filename.endswith(tuple(extensions)):
-                        models_list.append(filename)
-                window['-selected_lora-'].update(values=sorted(models_list))
-
-        if event == '-selected_lora-':
-            sg.user_settings_set_entry("selected_lora", values['-selected_lora-'])
-
-        if event == '-generate-':
-            prompts  = []
-            negative_prompts = []
-            batch_count = int(values['-batch_count-'])
-            prompt = values['-prompt-']
-            negative_prompt = values['-negative_prompt-']
-
-            for i in range(batch_count):
-                prompts.append(prompt)
-                negative_prompts.append(negative_prompt)
-            
-
-            steps = int(values['-sampling_steps-'])
-            cfg_scale = float(values['-cfg_scale-'])
-            seed = int(values['-seed-'])
-            width = int(values['-width-'])
-            height = int(values['-height-'])
-            length = int(values['-length-'])
-            length = (length * 8)
-            context_length=int(values['-context_length-'])
-            context_stride = int(values['-context_stride-'])
-            lora_alpha = float(values['-lora_alpha-'])
-
-            selected_model = sg.user_settings_get_entry("selected_model", '')
-            models_path_directory = sg.user_settings_get_entry("models_path", '')
-
-            selected_lora = sg.user_settings_get_entry("selected_lora", '')
-            lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
-
-
-            if selected_lora:
-                print("selected_lora",selected_lora)
-                base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
-                models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
-            else:
-                print("no lora",selected_model)
-                models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
-                base = ""
-
-            # models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
-            # base = ""
-            motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
-            motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15.ckpt"))
-            pretrained_model= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/StableDiffusion/stable-diffusion-v1-5"))
-            # embeddings_folder= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/embeddings"))
-
-            config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/prompts/result.yaml"))
-            inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference.yaml"))
-            motion_modules = []
-            if values['-motion_module_1.4-']:
-                motion_modules.append(motion_modules_mm_sd_v14)
-            if values['-motion_module_1.5-']:
-                motion_modules.append(motion_modules_mm_sd_v15)
-            
-
-            if motion_modules:    
-                config = ConfigInit(
-                    path=models_path_directory,
-                    base=base,
-                    additional_networks=[],
-                    motion_module=motion_modules,
-                    seed=seed,
-                    steps=steps,
-                    guidance_scale=cfg_scale,
-                    lora_alpha=lora_alpha,
-                    prompt=prompts,
-                    n_prompt=negative_prompts
-                )        
-                config_dict = asdict(config)
-                config_dict = {"config": config_dict}
-                config_omega = OmegaConf.create(config_dict)
-                OmegaConf.save(config=config_omega, f=config_path)
-                args = Namespace(
-                    pretrained_model_path=pretrained_model, 
-                    inference_config=inference_config_path, 
-                    config=config_path, 
-                    fp32=False, 
-                    disable_inversions=False, 
-                    # context_length=context_length, 
-                    context_length=16, 
-                    # context_stride=context_stride, 
-                    context_stride=0, 
-                    context_overlap=-1, 
-                    L=length, 
-                    W=width, 
-                    H=height,
-                    # embeddings_folder=embeddings_folder
-                )            
-                def animate_main_t(args):
-                    animate_main(args,window)
-
-                media_list = inst.media_list_new([])
-                # window['-pbar_steps_frame-'].update(visible=True)
-                
-                threading.Thread(target=animate_main_t, args=(args,), daemon=True).start() 
-            else:
-                print("No motion module selected")
-
-        if event == '-single_video_generated-':
-            add_music_post_video_path = values['-single_video_generated-']
-            add_and_play_video(list_player, media_list, add_music_post_video_path)
-
-        if event == '-video_grid_generated-':
-            if int(values['-batch_count-'])> 1:
-                add_music_post_video_path = values['-video_grid_generated-']
-                window['-add_music_post_video_file-'].update("")
-                window['-add_music_post_video_folder-'].update(add_music_post_video_path)
-                add_music_post_video_path_type = "folder"
-            elif int(values['-batch_count-'])==1:
-                window['-add_music_post_video_file-'].update(add_music_post_video_path) 
-                window['-add_music_post_video_folder-'].update("")
-                add_music_post_video_path_type = "file" 
-            if values['-add_music_cb-']:
-                window.write_event_value('-add_music_post-', add_music_post_video_path)
-
-        if event == '-total_steps_progress_bar-':
-            total_steps_start_time = dt.today().timestamp()
-
-            total_steps_progress_bar = int(values['-total_steps_progress_bar-'])
-
-        if event == '-total_frames_progress_bar-':
-            total_frames_progress_bar = int(values['-total_frames_progress_bar-'])
-            total_frames_start_time = dt.today().timestamp()
-
-        if event == '-total_samples_progress_bar-':
-            total_samples_progress_bar = int(values['-total_samples_progress_bar-'])
-            total_samples_start_time = dt.today().timestamp()
-
-        if event == '-steps_progress_bar-':
-            step = int(values['-steps_progress_bar-'])
-            cpbar.update_full(step,total_steps_progress_bar,total_steps_start_time,window,"-pbar_steps-","step")
-
-        if event == '-frames_progress_bar-':
-            frame = int(values['-frames_progress_bar-'])
-            cpbar.update_min(frame,total_frames_progress_bar,total_frames_start_time,window,"-pbar_frames-","frame")
-
-        if event == '-sample_progress_bar-':
-            sample = int(values['-sample_progress_bar-'])
-            cpbar.update_full(sample,total_samples_progress_bar,total_samples_start_time,window,"-pbar_samples-","sample")
-
-        if event == '-output_open_folder-':    
-            if add_music_post_video_path:
-                startfile_path = os.path.dirname(add_music_post_video_path)        
-                os.startfile(os.path.abspath(startfile_path))
-
-        if event == '-set_prompt-':
-            prompt = values['-selected_prompt-']
-            window['-prompt-'].update(prompt)
-
-        if event == '-set_neg_prompt-':
-            prompt = values['-selected_neg_prompt-']
-            window['-negative_prompt-'].update(prompt)
-
-        if event == '-set_music_prompt-':
-            prompt = values['-selected_music_prompt-']
-            window['-add_music_prompt-'].update(prompt)
-
-        if event == '-add_music_post_video_file-':
-            add_music_post_video_path = values['-add_music_post_video_file-']
-            add_music_post_video_path_type = "file"
-            window['-add_music_post_video_folder-'].update("")
-
-        if event == '-add_music_post_video_folder-':
-            window['-add_music_post_video_file-'].update("")
-            add_music_post_video_path = values['-add_music_post_video_folder-']
-            add_music_post_video_path_type = "folder"
-
-        if event == '-length_slider-': 
-            length = int(values['-length_slider-'])
-            window['-duration_music_post_slider-'].update(length)
-        
-        if event == '-add_music_post-':
-            if values['-add_music_post_video_folder-'] or values['-add_music_post_video_file-']:
-                media_list = inst.media_list_new([])
-                audio_model_version = values['-selected_audio_model-']
-                add_music_prompt = values['-add_music_prompt-']
-                duration = int(values['-duration_music_post-'])
-
-                if add_music_post_video_path_type == "file":
-                    output_video_filepath = add_audio_to_video(audio_model_version, add_music_prompt, "", duration, 250, 0, 1, 3, os.path.abspath(add_music_post_video_path))
-                    add_and_play_video(list_player, media_list, output_video_filepath)
+            if event == '-models_path-':
+                models_path_directory = sg.user_settings_get_entry("models_path", sg.user_settings_set_entry("models_path", values['-models_path-']))
+                print("models_path_directory",models_path_directory)
+                models_list = []
+                if models_path_directory:
+                    for filename in os.listdir(models_path_directory):
+                        if filename.endswith(tuple(extensions)):
+                            models_list.append(filename)
+                    window['-selected_model-'].update(values=sorted(models_list))
                     
-                elif add_music_post_video_path_type == "folder":
-                    for filename in os.listdir(add_music_post_video_path):
-                        # if filename.endswith(('.mp4', '.avi', '.mov', '.flv', '.wmv')): # add more formats if needed
-                        if filename.endswith(('.mp4')): # add more formats if needed
-                            full_file_path = os.path.join(add_music_post_video_path, filename)
-                            output_video_filepath = add_audio_to_video(audio_model_version, add_music_prompt, "", duration, 250, 0, 1, 3, full_file_path)
-                            add_and_play_video(list_player, media_list, output_video_filepath)
-            else:    
-                sg.Popup('Please select a video file or folder')           
+            if event == '-selected_model-':
+                sg.user_settings_set_entry("selected_model", values['-selected_model-'])
 
-        if event == '-play_music_post-':
-            if media_list.count() > 0:
-                add_and_play_video(list_player, media_list, output_video_filepath)
-            else:
-                sg.Popup('Nothing to play')
 
-        if event == 'play':
-            list_player.play()
-        if event == 'pause':
-            list_player.pause()
-        if event == 'stop':
-            def stop():
-                list_player.stop()
-            threading.Thread(target=stop, args=(), daemon=True).start() 
-        if event == 'next':
-            def next():
-                list_player.next()
+
+            if event == '-lora_path-':
+                lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", sg.user_settings_set_entry("lora_models_path", values['-lora_path-']))
+                print("lora_models_path_directory",lora_models_path_directory)
+                models_list = []
+                if lora_models_path_directory:
+                    for filename in os.listdir(lora_models_path_directory):
+                        if filename.endswith(tuple(extensions)):
+                            models_list.append(filename)
+                    window['-selected_lora-'].update(values=sorted(models_list))
+
+            if event == '-selected_lora-':
+                sg.user_settings_set_entry("selected_lora", values['-selected_lora-'])
+
+            if event == '-generate-':
+                prompts  = []
+                negative_prompts = []
+                batch_count = int(values['-batch_count-'])
+                prompt = values['-prompt-']
+                negative_prompt = values['-negative_prompt-']
+
+                for i in range(batch_count):
+                    prompts.append(prompt)
+                    negative_prompts.append(negative_prompt)
+                
+
+                steps = int(values['-sampling_steps-'])
+                cfg_scale = float(values['-cfg_scale-'])
+                seed = int(values['-seed-'])
+                width = int(values['-width-'])
+                height = int(values['-height-'])
+                length = int(values['-length-'])
+                length = (length * 8)
+                context_length=int(values['-context_length-'])
+                context_stride = int(values['-context_stride-'])
+                lora_alpha = float(values['-lora_alpha-'])
+
+                selected_model = sg.user_settings_get_entry("selected_model", '')
+                models_path_directory = sg.user_settings_get_entry("models_path", '')
+
+                selected_lora = sg.user_settings_get_entry("selected_lora", '')
+                lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
+
+
+                if selected_lora:
+                    print("selected_lora",selected_lora)
+                    base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+                    models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
+                else:
+                    print("no lora",selected_model)
+                    models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+                    base = ""
+
+                # models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
+                # base = ""
+                motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
+                motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15.ckpt"))
+                pretrained_model= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/StableDiffusion/stable-diffusion-v1-5"))
+                # embeddings_folder= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/embeddings"))
+
+                config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/prompts/result.yaml"))
+                inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference.yaml"))
+                motion_modules = []
+                if values['-motion_module_1.4-']:
+                    motion_modules.append(motion_modules_mm_sd_v14)
+                if values['-motion_module_1.5-']:
+                    motion_modules.append(motion_modules_mm_sd_v15)
+                
+
+                if motion_modules:    
+                    config = ConfigInit(
+                        path=models_path_directory,
+                        base=base,
+                        additional_networks=[],
+                        motion_module=motion_modules,
+                        seed=seed,
+                        steps=steps,
+                        guidance_scale=cfg_scale,
+                        lora_alpha=lora_alpha,
+                        prompt=prompts,
+                        n_prompt=negative_prompts
+                    )        
+                    config_dict = asdict(config)
+                    config_dict = {"config": config_dict}
+                    config_omega = OmegaConf.create(config_dict)
+                    OmegaConf.save(config=config_omega, f=config_path)
+                    args = Namespace(
+                        pretrained_model_path=pretrained_model, 
+                        inference_config=inference_config_path, 
+                        config=config_path, 
+                        fp32=False, 
+                        disable_inversions=False, 
+                        # context_length=context_length, 
+                        context_length=16, 
+                        # context_stride=context_stride, 
+                        context_stride=0, 
+                        context_overlap=-1, 
+                        L=length, 
+                        W=width, 
+                        H=height,
+                        # embeddings_folder=embeddings_folder
+                    )            
+                    def animate_main_t(args):
+                        animate_main(args,window)
+
+                    media_list = inst.media_list_new([])
+                    # window['-pbar_steps_frame-'].update(visible=True)
+                    
+                    threading.Thread(target=animate_main_t, args=(args,), daemon=True).start() 
+                else:
+                    print("No motion module selected")
+
+            if event == '-single_video_generated-':
+                add_music_post_video_path = values['-single_video_generated-']
+                add_and_play_video(list_player, media_list, add_music_post_video_path)
+
+            if event == '-video_grid_generated-':
+                if int(values['-batch_count-'])> 1:
+                    add_music_post_video_path = values['-video_grid_generated-']
+                    window['-add_music_post_video_file-'].update("")
+                    window['-add_music_post_video_folder-'].update(add_music_post_video_path)
+                    add_music_post_video_path_type = "folder"
+                elif int(values['-batch_count-'])==1:
+                    window['-add_music_post_video_file-'].update(add_music_post_video_path) 
+                    window['-add_music_post_video_folder-'].update("")
+                    add_music_post_video_path_type = "file" 
+                if values['-add_music_cb-']:
+                    window.write_event_value('-add_music_post-', add_music_post_video_path)
+
+            if event == '-total_steps_progress_bar-':
+                total_steps_start_time = dt.today().timestamp()
+
+                total_steps_progress_bar = int(values['-total_steps_progress_bar-'])
+
+            if event == '-total_frames_progress_bar-':
+                total_frames_progress_bar = int(values['-total_frames_progress_bar-'])
+                total_frames_start_time = dt.today().timestamp()
+
+            if event == '-total_samples_progress_bar-':
+                total_samples_progress_bar = int(values['-total_samples_progress_bar-'])
+                total_samples_start_time = dt.today().timestamp()
+
+            if event == '-steps_progress_bar-':
+                step = int(values['-steps_progress_bar-'])
+                cpbar.update_full(step,total_steps_progress_bar,total_steps_start_time,window,"-pbar_steps-","step")
+
+            if event == '-frames_progress_bar-':
+                frame = int(values['-frames_progress_bar-'])
+                cpbar.update_min(frame,total_frames_progress_bar,total_frames_start_time,window,"-pbar_frames-","frame")
+
+            if event == '-sample_progress_bar-':
+                sample = int(values['-sample_progress_bar-'])
+                cpbar.update_full(sample,total_samples_progress_bar,total_samples_start_time,window,"-pbar_samples-","sample")
+
+            if event == '-output_open_folder-':    
+                if add_music_post_video_path:
+                    startfile_path = os.path.dirname(add_music_post_video_path)        
+                    os.startfile(os.path.abspath(startfile_path))
+
+            if event == '-set_prompt-':
+                prompt = values['-selected_prompt-']
+                window['-prompt-'].update(prompt)
+
+            if event == '-set_neg_prompt-':
+                prompt = values['-selected_neg_prompt-']
+                window['-negative_prompt-'].update(prompt)
+
+            if event == '-set_music_prompt-':
+                prompt = values['-selected_music_prompt-']
+                window['-add_music_prompt-'].update(prompt)
+
+            if event == '-add_music_post_video_file-':
+                add_music_post_video_path = values['-add_music_post_video_file-']
+                add_music_post_video_path_type = "file"
+                window['-add_music_post_video_folder-'].update("")
+
+            if event == '-add_music_post_video_folder-':
+                window['-add_music_post_video_file-'].update("")
+                add_music_post_video_path = values['-add_music_post_video_folder-']
+                add_music_post_video_path_type = "folder"
+
+            if event == '-length_slider-': 
+                length = int(values['-length_slider-'])
+                window['-duration_music_post_slider-'].update(length)
+            
+            if event == '-add_music_post-':
+                if values['-add_music_post_video_folder-'] or values['-add_music_post_video_file-']:
+                    media_list = inst.media_list_new([])
+                    audio_model_version = values['-selected_audio_model-']
+                    add_music_prompt = values['-add_music_prompt-']
+                    duration = int(values['-duration_music_post-'])
+
+                    if add_music_post_video_path_type == "file":
+                        output_video_filepath = add_audio_to_video(audio_model_version, add_music_prompt, "", duration, 250, 0, 1, 3, os.path.abspath(add_music_post_video_path))
+                        add_and_play_video(list_player, media_list, output_video_filepath)
+                        
+                    elif add_music_post_video_path_type == "folder":
+                        for filename in os.listdir(add_music_post_video_path):
+                            # if filename.endswith(('.mp4', '.avi', '.mov', '.flv', '.wmv')): # add more formats if needed
+                            if filename.endswith(('.mp4')): # add more formats if needed
+                                full_file_path = os.path.join(add_music_post_video_path, filename)
+                                output_video_filepath = add_audio_to_video(audio_model_version, add_music_prompt, "", duration, 250, 0, 1, 3, full_file_path)
+                                add_and_play_video(list_player, media_list, output_video_filepath)
+                else:    
+                    sg.Popup('Please select a video file or folder')           
+
+            if event == '-play_music_post-':
+                if media_list.count() > 0:
+                    add_and_play_video(list_player, media_list, output_video_filepath)
+                else:
+                    sg.Popup('Nothing to play')
+
+            if event == 'play':
                 list_player.play()
-            threading.Thread(target=next, args=(), daemon=True).start()
-        if event == 'previous':
-            def previous():
-                list_player.previous()                 
-                list_player.previous()
-                list_player.play()
-            threading.Thread(target=previous, args=(), daemon=True).start()
+            if event == 'pause':
+                list_player.pause()
+            if event == 'stop':
+                def stop():
+                    list_player.stop()
+                threading.Thread(target=stop, args=(), daemon=True).start() 
+            if event == 'next':
+                def next():
+                    list_player.next()
+                    list_player.play()
+                threading.Thread(target=next, args=(), daemon=True).start()
+            if event == 'previous':
+                def previous():
+                    list_player.previous()                 
+                    list_player.previous()
+                    list_player.play()
+                threading.Thread(target=previous, args=(), daemon=True).start()
 
-        if event == 'PATREON_BTN_KEY':
-            webbrowser.open("https://www.patreon.com/distyx")   
-    window.close()
+            if event == 'PATREON_BTN_KEY':
+                webbrowser.open("https://www.patreon.com/distyx")   
+        window.close()
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 @dataclass
