@@ -49,7 +49,9 @@ def main():
     sg.theme('Dark Gray 15')
     total_steps_progress_bar = 0
     # jt.create_preferences_init()
-    models_list = []
+    models_list = [
+        ""
+    ]
     lora_models_list = [
         ""
     ]
@@ -423,7 +425,8 @@ def main():
                     guidance_scale=cfg_scale,
                     lora_alpha=lora_alpha,
                     prompt=prompts,
-                    n_prompt=negative_prompts
+                    n_prompt=negative_prompts,
+
                 )        
                 config_dict = asdict(config)
                 config_dict = {"config": config_dict}
@@ -735,7 +738,7 @@ def btn(name):
     return sg.Button(name, size=(6, 1),expand_x=True)
 
 def init_vlc_player(window):
-    inst = vlc.Instance('--quiet')
+    inst = vlc.Instance('--quiet --no-xlib')
     list_player = inst.media_list_player_new()
     media_list = inst.media_list_new([])
     list_player.set_media_list(media_list)
