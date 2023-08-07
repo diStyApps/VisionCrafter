@@ -217,7 +217,7 @@ def main():
             btn('previous'), btn('play'), btn('next'), btn('stop'),sg.Button('Open Folder',k='-output_open_folder-',expand_x=True),
         ],        
         [
-            sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),visible=True),
+            sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
         ],  
         [
  
@@ -394,7 +394,9 @@ def main():
             context_length=int(values['-context_length-'])
             context_stride = int(values['-context_stride-'])
             lora_alpha = float(values['-lora_alpha-'])
-
+            '-save_gif_format-'
+            save_gif_format = values['-save_gif_format-']
+            save_video_frames = values['-save_video_frames-']
             selected_model = sg.user_settings_get_entry("selected_model", '')
             models_path_directory = sg.user_settings_get_entry("models_path", '')
 
@@ -440,6 +442,7 @@ def main():
                     prompt=prompts,
                     n_prompt=negative_prompts,
 
+
                 )        
                 config_dict = asdict(config)
                 config_dict = {"config": config_dict}
@@ -459,6 +462,8 @@ def main():
                     L=length, 
                     W=width, 
                     H=height,
+                    save_gif_format=save_gif_format,
+                    save_video_frames=save_video_frames                    
                     # embeddings_folder=embeddings_folder
                 )            
                 def animate_main_t(args):

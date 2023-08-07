@@ -27,7 +27,38 @@ import math
 from pathlib import Path
 import shutil
 import gc
+import cv2
 
+def save_frames_from_video(video_path, output_dir):
+    """
+    This function saves frames from a video file to a given directory.
+
+    Parameters:
+    video_path (str): The path to the video file.
+    output_dir (str): The directory to save the frames.
+    """
+
+    # Create the frames folder if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Open the video file
+    cap = cv2.VideoCapture(video_path)
+
+    # Check if the video file was opened correctly
+    if not cap.isOpened():
+        print(f"Error opening video file: {video_path}")
+    else:
+        # Frame index
+        i = 0
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            cv2.imwrite(f'{output_dir}/{str(i).zfill(4)}.png', frame)
+            i += 1
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 def main(args,window):
     *_, func_args = inspect.getargvalues(inspect.currentframe())
@@ -157,10 +188,15 @@ def main(args,window):
                 outpout_dir_name = "sample"
                 prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))
                 save_videos_grid(sample, f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
-                save_videos_grid(sample, f"{savedir}/results/gif/{sample_idx}-{prompt}.gif")
                 print(f"save to {savedir}/results/{prompt}.mp4")
-                print(f"save to {savedir}/results/{prompt}.gif")
 
+                if args.save_gif_format:
+                    save_videos_grid(sample, f"{savedir}/results/gif/{sample_idx}-{prompt}.gif")
+                    print(f"save to {savedir}/results/{prompt}.gif")
+
+                if args.save_video_frames:
+                    save_frames_from_video(f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4", f"{savedir}/results/frames/{sample_idx}-{prompt}")
+                    print(f"save frames to {savedir}/results/frames/{sample_idx}-{prompt}")
 
                 window.write_event_value('-single_video_generated-',f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
                 window.write_event_value('-sample_progress_bar-',sample_idx)

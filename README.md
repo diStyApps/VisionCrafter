@@ -57,8 +57,13 @@ VisionCrafter tool with GUI for AnimateDiff and other projects, that generates a
 Ideal for producing short videos and GIFs, as well as creating brief cinematic scenes.
 
 
-### Update [0.0.3] 
-Added lora support
+### Update [0.0.4] 
+
+Saving options: mp4 (default), GIF, individual frames.
+
+Extended animation limit to 60 seconds (caution: time-consuming and may not yield desired results).
+
+Share your work on https://www.reddit.com/r/visioncrafter, created by [@yavuzitconsulting](https://github.com/yavuzitconsulting). You can also find helpful guides and additional information there.
 
 <img src="media/preview/0.0.3/1.gif">
 <img src="media/preview/0.0.2/1.gif">
@@ -78,7 +83,7 @@ Added lora support
 
 <!-- Requirements -->
 ## Download And Install
- - [Download](https://github.com/diStyApps/VisionCrafter/archive/refs/heads/main.zip)
+ - Install [SEAIT](https://github.com/diStyApps/seait), choose VisionCrafter from the list, and click 'install'.
 
  Or git clone
 
