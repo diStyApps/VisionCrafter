@@ -55,6 +55,8 @@ def main():
     lora_models_list = [
         ""
     ]
+    length_warning_1 = True
+    length_warning_2 = True
 
     add_music_post_video_path =''
     set_models_path(models_list, extensions, sg.user_settings_get_entry("models_path", ''))
@@ -178,8 +180,8 @@ def main():
                             [
                                 sg.T('Length in sec',s=(10,1)),
                                 sg.In(2,k='-length-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                                sg.Slider(default_value=2,range=((1,6)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-length_slider-',expand_x=True,s=(10,10)),   
+                                sg.Slider(default_value=2,range=((1,60)),resolution=1,
+                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-length_slider-',expand_x=True,s=(10,10),tooltip='Generating more than a 6-second animation may take a very long time and might not produce the desired results, so use with caution.'),   
                                 sg.T('Motion modules',s=(15,1)),
                                 sg.Checkbox('1.4',k='-motion_module_1.4-',default=True),
                                 sg.Checkbox('1.5',k='-motion_module_1.5-',default=False),  
@@ -217,6 +219,17 @@ def main():
         [
             sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),visible=True),
         ],  
+        [
+ 
+                sg.Frame('Saving options',[
+                [
+                    sg.Checkbox('MP4',k='-save_mp4_format-',default=True,disabled=True),
+                    sg.Checkbox('GIF',k='-save_gif_format-',default=True),
+                    sg.Checkbox('Frames',k='-save_video_frames-',default=False),
+                ],           
+                ],expand_x=True,element_justification='l',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',visible=True),                                 
+
+        ],
         [
                 sg.Frame('Add Post Music ',[
                 [
@@ -529,6 +542,18 @@ def main():
 
         if event == '-length_slider-': 
             length = int(values['-length_slider-'])
+            if length > 6 and length_warning_1:
+                sg.Popup("Warning", """
+Generating more than a 6-second animation may take a very long time and might not produce the desired results, so use with caution.
+                         """)
+                length_warning_1 = False
+            if length > 30 and length_warning_2:
+                sg.Popup("Warning", """
+Generating more than a 30-second animation may take a very long time and might not produce the desired results, so use with caution.
+
+Music will be added only to the first 30 seconds of the video.
+                         """)   
+                length_warning_2 = False             
             window['-duration_music_post_slider-'].update(length)
         
         if event == '-add_music_post-':
@@ -770,7 +795,7 @@ def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
     if duration > MODEL.lm.cfg.dataset.segment_duration:
         # raise gr.Error("MusicGen currently supports durations of up to 30 seconds!")
         print("MusicGen currently supports durations of up to 30 seconds!")
-        return
+        # return
     MODEL.set_generation_params(
         use_sampling=True,
         top_k=topk,
@@ -807,7 +832,7 @@ def predict_and_save(model, text, melody, duration, topk, topp, temperature, cfg
     if duration > MODEL.lm.cfg.dataset.segment_duration:
         # raise gr.Error("MusicGen currently supports durations of up to 30 seconds!")
         print("MusicGen currently supports durations of up to 30 seconds!")
-        return
+        # return
     MODEL.set_generation_params(
         use_sampling=True,
         top_k=topk,
@@ -855,6 +880,10 @@ def add_audio_to_video(model, text, melody, duration, topk, topp, temperature, c
     logging.basicConfig(filename=os.path.join(dir_path, 'log.log'), level=logging.INFO)
     logging.info(f'Called add_audio_to_video with log: {locals()}')
 
+    if duration > 30:
+        duration = 30
+        print("MusicGen currently supports durations of up to 30 seconds, only the first 30 seconds will be used")
+        
     sample_rate, output = predict(model, text, melody, duration, topk, topp, temperature, cfg_coef)
 
     # Check the dimensions of the output and reduce if necessary
