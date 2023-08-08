@@ -38,7 +38,7 @@ from ..utils.path import get_absolute_path
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
-
+interrupted = False
 @dataclass
 class AnimationPipelineOutput(BaseOutput):
     videos: Union[torch.Tensor, np.ndarray]
@@ -46,6 +46,14 @@ class AnimationPipelineOutput(BaseOutput):
 
 class AnimationPipeline(DiffusionPipeline):
     _optional_components = []
+    # global stop_requested
+    def interrupt():
+        global interrupted
+        interrupted = True
+
+    def uninterrupt():
+        global interrupted
+        interrupted = False
 
     def __init__(
         self,
@@ -311,6 +319,9 @@ class AnimationPipeline(DiffusionPipeline):
         window.write_event_value('-total_frames_progress_bar-',latents.shape[0])
 
         for frame_idx in tqdm(range(latents.shape[0])):
+            if interrupted:
+                print("interrupting execution...")
+                break             
             video.append(self.vae.decode(latents[frame_idx:frame_idx+1].to(device)).sample)
             window.write_event_value('-frames_progress_bar-',(frame_idx))
 
@@ -430,6 +441,7 @@ class AnimationPipeline(DiffusionPipeline):
 
         
     ):
+  
         # Default height and width to unet
         height = height or self.unet.config.sample_size * self.vae_scale_factor
         width = width or self.unet.config.sample_size * self.vae_scale_factor
@@ -491,8 +503,11 @@ class AnimationPipeline(DiffusionPipeline):
         window.write_event_value('-total_steps_progress_bar-',total)
         steps_idx = 0
         with self.progress_bar(total=total) as progress_bar:
+            
             for i, t in enumerate(timesteps):
-
+                if interrupted:
+                    print("interrupting execution...")
+                    break 
                 noise_pred = torch.zeros((latents.shape[0] * (2 if do_classifier_free_guidance else 1),
                                           *latents.shape[1:]), device=latents.device, dtype=latents_dtype)
                 counter = torch.zeros((1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents_dtype)
@@ -525,16 +540,17 @@ class AnimationPipeline(DiffusionPipeline):
                     if callback is not None and i % callback_steps == 0:
                         callback(i, t, latents)
 
+        if not interrupted:
         # Post-processing
-        video = self.decode_latents(latents,window)
+            video = self.decode_latents(latents,window)
 
-        # Convert to tensor
-        if output_type == "tensor":
-            video = torch.from_numpy(video)
+            # Convert to tensor
+            if output_type == "tensor":
+                video = torch.from_numpy(video)
 
-        if not return_dict:
-            return video
-        
-        # window["-batch_count-"].update("Done!")
+            if not return_dict:
+                return video
 
-        return AnimationPipelineOutput(videos=video)
+            return AnimationPipelineOutput(videos=video)
+        else:
+            return None

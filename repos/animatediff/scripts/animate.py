@@ -28,6 +28,18 @@ from pathlib import Path
 import shutil
 import gc
 import cv2
+interrupted = False
+
+def interrupt():
+    global interrupted
+    interrupted = True
+    AnimationPipeline.interrupt()
+
+def uninterrupt():
+    global interrupted
+    interrupted = False
+    AnimationPipeline.uninterrupt()
+
 
 def save_frames_from_video(video_path, output_dir):
     """
@@ -64,8 +76,7 @@ def main(args,window):
     *_, func_args = inspect.getargvalues(inspect.currentframe())
     func_args = dict(func_args)
 
-    # print("args", args)
-
+    uninterrupt()
     if args.context_length == 0:
         args.context_length = args.L
     if args.context_overlap == -1:
@@ -83,11 +94,18 @@ def main(args,window):
     sample_idx = 0
 
     for model_idx, (config_key, model_config) in enumerate(list(config.items())):
-        
+        # global stop_requested
+        # if stop_requested:
+        #     print("Stopping the loop...")
+        #     break        
         motion_modules = model_config.motion_module
         motion_modules = [motion_modules] if isinstance(motion_modules, str) else list(motion_modules)
+        # stop_requested = True
         for motion_module in motion_modules:
-        
+            global interrupted
+            if interrupted:
+                print("Stopping the loop...")
+                break        
             ### >>> create validation pipeline >>> ###
             tokenizer    = CLIPTokenizer.from_pretrained(args.pretrained_model_path, subfolder="tokenizer")
             text_encoder = CLIPTextModel.from_pretrained(args.pretrained_model_path, subfolder="text_encoder")
@@ -159,57 +177,67 @@ def main(args,window):
             
             config[config_key].random_seed = []
             window.write_event_value('-total_samples_progress_bar-',len(prompts))
-
             for propt_idx, (prompt, n_prompt, random_seed) in enumerate(zip(prompts, n_prompts, random_seeds)):
-                
-                # manually set random seed for reproduction
-                if random_seed != -1: torch.manual_seed(random_seed)
-                else: torch.seed()
-                config[config_key].random_seed.append(torch.initial_seed())
-                
-                print(f"current seed: {torch.initial_seed()}")
-                print(f"sampling {prompt} ...")
-                sample = pipeline(
-                    window,
-                    prompt,
-                    init_image          = init_image,
-                    negative_prompt     = n_prompt,
-                    num_inference_steps = model_config.steps,
-                    guidance_scale      = model_config.guidance_scale,
-                    width               = args.W,
-                    height              = args.H,
-                    video_length        = args.L,
-                    temporal_context    = args.context_length,
-                    strides             = args.context_stride + 1,
-                    overlap             = args.context_overlap,
-                    fp16                = not args.fp32,
-                ).videos
-                samples.append(sample)
-                outpout_dir_name = "sample"
-                prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))
-                save_videos_grid(sample, f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
-                print(f"save to {savedir}/results/{prompt}.mp4")
+                try:
+                    # manually set random seed for reproduction
+                    if random_seed != -1: torch.manual_seed(random_seed)
+                    else: torch.seed()
+                    config[config_key].random_seed.append(torch.initial_seed())
+                    
+                    print(f"current seed: {torch.initial_seed()}")
+                    print(f"sampling {prompt} ...")
+                    sample = pipeline(
+                        window,
+                        prompt,
+                        init_image          = init_image,
+                        negative_prompt     = n_prompt,
+                        num_inference_steps = model_config.steps,
+                        guidance_scale      = model_config.guidance_scale,
+                        width               = args.W,
+                        height              = args.H,
+                        video_length        = args.L,
+                        temporal_context    = args.context_length,
+                        strides             = args.context_stride + 1,
+                        overlap             = args.context_overlap,
+                        fp16                = not args.fp32,
+                    )
+                    if sample is None:
+                        # break
+                        raise ValueError("The pipeline did not return a value. Cannot proceed.")
+                    sample = sample.videos
+                    samples.append(sample)
+                    prompt = "-".join((prompt.replace("/", "").split(" ")[:10]))
+                    save_videos_grid(sample, f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
+                    print(f"save to {savedir}/results/{prompt}.mp4")
 
-                if args.save_gif_format:
-                    save_videos_grid(sample, f"{savedir}/results/gif/{sample_idx}-{prompt}.gif")
-                    print(f"save to {savedir}/results/{prompt}.gif")
+                    if args.save_gif_format:
+                        save_videos_grid(sample, f"{savedir}/results/gif/{sample_idx}-{prompt}.gif")
+                        print(f"save to {savedir}/results/{prompt}.gif")
 
-                if args.save_video_frames:
-                    save_frames_from_video(f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4", f"{savedir}/results/frames/{sample_idx}-{prompt}")
-                    print(f"save frames to {savedir}/results/frames/{sample_idx}-{prompt}")
+                    if args.save_video_frames:
+                        save_frames_from_video(f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4", f"{savedir}/results/frames/{sample_idx}-{prompt}")
+                        print(f"save frames to {savedir}/results/frames/{sample_idx}-{prompt}")
 
-                window.write_event_value('-single_video_generated-',f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
-                window.write_event_value('-sample_progress_bar-',sample_idx)
-                
-                sample_idx += 1
+                    window.write_event_value('-single_video_generated-',f"{savedir}/results/mp4/{sample_idx}-{prompt}.mp4")
+                    window.write_event_value('-sample_progress_bar-',sample_idx)
+                    
+                    sample_idx += 1
+                except AttributeError:
+                    print(f"interrupted")
+                    break
+                except ValueError:
+                    print(f"interrupted")
+                    break
 
-    samples = torch.concat(samples)
-    save_videos_grid(samples, f"{savedir}/results_grid.mp4", n_rows=4)
+    if interrupted == False:
+        samples = torch.concat(samples)
+        save_videos_grid(samples, f"{savedir}/results_grid.mp4", n_rows=4)
+    # samples = torch.concat(samples)
+    # save_videos_grid(samples, f"{savedir}/results_grid.mp4", n_rows=4)
+        OmegaConf.save(config, f"{savedir}/config.yaml")
+        window.write_event_value('-video_grid_generated-',f"{savedir}/results/mp4")
     
     del pipeline
     gc.collect()
     torch.cuda.empty_cache()
-    OmegaConf.save(config, f"{savedir}/config.yaml")
-    # window.write_event_value('-video_grid_generated-',f"{savedir}/results_grid.mp4")
-    window.write_event_value('-video_grid_generated-',f"{savedir}/results/mp4")
 

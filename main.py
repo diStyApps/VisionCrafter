@@ -20,6 +20,9 @@ import psutil
 import util.json_tools as jt
 from util.const import *
 from repos.animatediff.scripts.animate import main as animate_main
+from repos.animatediff.scripts.animate import interrupt
+from repos.animatediff.scripts.animate import interrupted
+
 from audiocraft.models import MusicGen
 from audiocraft.data.audio import audio_write
 from argparse import Namespace
@@ -218,6 +221,8 @@ def main():
         ],        
         [
             sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
+            sg.Button('Interrupt',k='-interrupt-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
+
         ],  
         [
  
@@ -467,6 +472,7 @@ def main():
                     # embeddings_folder=embeddings_folder
                 )            
                 def animate_main_t(args):
+                    stop_requested = False
                     animate_main(args,window)
 
                 media_list = inst.media_list_new([])
@@ -475,6 +481,17 @@ def main():
                 threading.Thread(target=animate_main_t, args=(args,), daemon=True).start() 
             else:
                 print("No motion module selected")
+
+        if event == '-interrupt-':
+
+
+            def interrupt_t():
+                interrupt()
+
+            media_list = inst.media_list_new([])
+            # window['-pbar_steps_frame-'].update(visible=True)
+            
+            threading.Thread(target=interrupt_t, args=(), daemon=True).start()              
 
         if event == '-single_video_generated-':
             add_music_post_video_path = values['-single_video_generated-']

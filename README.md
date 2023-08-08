@@ -56,6 +56,9 @@ VisionCrafter tool with GUI for AnimateDiff and other projects, that generates a
 
 Ideal for producing short videos and GIFs, as well as creating brief cinematic scenes.
 
+### Update [0.0.5] 
+
+Added interrupt button, a bit buggy but better then nothing for now.
 
 ### Update [0.0.4] 
 

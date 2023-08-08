@@ -1,5 +1,5 @@
 NAME = "VisionCrafter"
-VER = '0.0.4'
+VER = '0.0.5'
 GITHUB = "github.com/diStyApps/VisionCrafter"
 MODEL = None
 USE_FADE_IN = True
