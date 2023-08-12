@@ -1,211 +1,46 @@
 import PySimpleGUI as sg
-import textwrap
 import os
 import io
-import subprocess
-import shlex
 from PIL import Image, ImageFilter, ImageOps,ImageTk
 import threading
-import time
 from datetime import datetime as dt ,timedelta
-# import requests
-import math 
-import numpy as np
 from moviepy.editor import AudioFileClip, VideoFileClip 
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
-import pandas as pd
 import webbrowser 
-import uuid
-import psutil
-import util.json_tools as jt
-from util.const import *
-from repos.animatediff.scripts.animate import main as animate_main
-from repos.animatediff.scripts.animate import interrupt
-from repos.animatediff.scripts.animate import interrupted
 
-from audiocraft.models import MusicGen
-from audiocraft.data.audio import audio_write
 from argparse import Namespace
 from dataclasses import dataclass, field,asdict
 from typing import List, Union
 from omegaconf import OmegaConf
-from threading import Thread
-import vlc
-from sys import platform as PLATFORM
+
+from repos.animatediff.scripts.animate import main as animate_main
+from repos.animatediff.scripts.animate import interrupt
+
+import layout.navigation as navigation_layout
+import layout.about as about_layout
+import layout.txt2vid as txt2vid_layout
+import layout.models_bar as models_bar_layout
+
+import util.json_tools as jt
+from util.const import *
+import util.colors as color
+import util.icons as icon
 import util.progress_bar_custom as cpbar
-import timeit
-import torch
-import torchaudio
-import soundfile as sf
-from moviepy.editor import VideoFileClip, AudioFileClip
-import numpy as np
-import tempfile
-from pydub import AudioSegment
-import shutil
-import logging
+from util.sliders import sliders
+from util.ui_tools import flatten_ui_elements,expand_column_helper,clear_items_keys
+from util.vlc import init_vlc_player,add_and_play_video
+from util.musicgen import add_audio_to_video
 # -------------------------------------------------------------------
 # Constants, defaults, Base64 icons
 
 current_folder = os.getcwd()
 
 def main(): 
-    sg.theme('Dark Gray 15')
     total_steps_progress_bar = 0
     # jt.create_preferences_init()
-    models_list = [
-        ""
-    ]
-    lora_models_list = [
-        ""
-    ]
     length_warning_1 = True
     length_warning_2 = True
-
     add_music_post_video_path =''
-    set_models_path(models_list, extensions, sg.user_settings_get_entry("models_path", ''))
-    set_models_path(lora_models_list, extensions, sg.user_settings_get_entry("lora_models_path", ''))
-
-
-    left_col_n = [
-                    [
-                        sg.Frame('Prompt',[
-                            [    
-                                sg.Frame('',[
-                                        [    
-                                            sg.MLine("",key="-prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                            autoscroll=False, auto_refresh=True,size=(40,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
-                                        ],    
-                                                            
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                    ),
-                            ],    
-                                                
-                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],
-                    [
-                        sg.Frame('Negative',[
-                            [    
-                                sg.Frame('',[
-                                    [    
-                                        sg.MLine("",key="-negative_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                        autoscroll=False, auto_refresh=True,size=(10,10),pad=(5,5),expand_x=True,expand_y=True,font="Ariel 11"),
-                                    ],     
-                                                            
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                    ),
-                            ],    
-                                                
-                            ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],     
-                    [
-                        sg.Combo(prompts_list, default_value=sg.user_settings_get_entry("selected_prompt", ''), size=(40, 10), key="-selected_prompt-",expand_x=True,enable_events=True, readonly=True), 
-                        sg.Button('Set',k='-set_prompt-'),
-                        
-                        sg.Combo(prompts_neg_list, default_value=sg.user_settings_get_entry("selected_neg_prompt", ''), size=(40, 10), key="-selected_neg_prompt-",expand_x=True,enable_events=True, readonly=True),  
-                        sg.Button('Set',k='-set_neg_prompt-') ,
-                    ],                      
-                    [
-                        sg.Frame('Music',[
-                            [    
-                                    sg.Frame('Prompt',[
-                                        [    
-                                            sg.Frame('',[
-                                                [    
-                                                    sg.MLine("Harp,bells,fluts,fantasy,nightelf,wind",key="-add_music_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
-                                                    autoscroll=False, auto_refresh=True,size=(2,1),pad=(5,5),expand_x=True,expand_y=False,font="Ariel 11"),
-                                                ],     
-                                                                        
-                                                    ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=COLOR_DARK_GRAY
-                                                ),
-                                        ], 
-                                        [
-                                            sg.Combo(music_prompts_list, default_value=sg.user_settings_get_entry("selected_music_prompt", ''), size=(40, 10), key="-selected_music_prompt-",expand_x=True,enable_events=True, readonly=True), 
-                                            sg.Button('Set',k='-set_music_prompt-'),    
-                                        ],         
-                                                                       
-                                        ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                                    ),
-                            ],   
-                            [ 
-                                    sg.Frame('',[  
-                                        [
-                                            sg.T('Audio models'),
-                                            sg.Combo(audio_model_list, default_value="melody", size=(40, 10), key="-selected_audio_model-",expand_x=False,enable_events=True, readonly=True),                                               
-                                            sg.Checkbox('Add to video',k='-add_music_cb-',default=False),  
-                                        ]  
-                                                            
-                                        ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True
-                                    ),
-                            ],                                            
-                            ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=GRAY
-                        ),
-                    ],                       
-        
-                    [
-                        sg.Frame('',[
-                                                        [
-                                sg.T('Seed',s=(10,1)),
-                                sg.In(-1,k='-seed-',s=(20,5),justification='center'),
-                                sg.Slider(default_value=-1,range=((-1,99999999999999)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-seed_slider-',expand_x=True,s=(10,10)), 
-                            ],  
-
-                            [
-                                sg.T('Steps',s=(10,1)),
-                                sg.In(20,k='-sampling_steps-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=20,range=((1,150)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-sampling_steps_slider-',expand_x=True,s=(10,10)), 
-                                sg.T('Batch count',s=(20,1)),
-                                sg.In(1,k='-batch_count-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=1,range=((1,100)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-batch_count_slider-',expand_x=True,s=(10,10)),                 
-                            ],    
-                            [
-                                sg.T('Width',s=(10,1)),
-                                sg.In(512,k='-width-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=512,range=((256,2048)),resolution=32,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-width_slider-',expand_x=True,s=(10,10)),   
-                                sg.T('Height',s=(10,1)),
-                                sg.In(512,k='-height-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=512,range=((256,2048)),resolution=32,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-height_slider-',expand_x=True,s=(10,10)),                 
-                            ],              
-                            [
-                                sg.T('CFG Scale',s=(10,1)),
-                                sg.In(7.5,k='-cfg_scale-',s=(5,5),justification='center'),
-                                sg.Slider(default_value=7.5,range=((1,30)),resolution=0.5,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-cfg_scale_slider-',expand_x=True,s=(10,10)), 
-                            ],  
-         
-
-                            [
-                                sg.T('Length in sec',s=(10,1)),
-                                sg.In(2,k='-length-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                                sg.Slider(default_value=2,range=((1,60)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-length_slider-',expand_x=True,s=(10,10),tooltip='Generating more than a 6-second animation may take a very long time and might not produce the desired results, so use with caution.'),   
-                                sg.T('Motion modules',s=(15,1)),
-                                sg.Checkbox('1.4',k='-motion_module_1.4-',default=True),
-                                sg.Checkbox('1.5',k='-motion_module_1.5-',default=False),  
-
-                                sg.T('Context length',s=(12,1),visible=False),
-                                sg.In(0,k='-context_length-',s=(5,5),justification='center',visible=False),
-                                sg.Slider(default_value=0,range=((0,48)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_length_slider-',expand_x=True,s=(10,10),visible=False),          
-                                sg.T('Context stride',s=(12,1),visible=False),
-                                sg.In(0,k='-context_stride-',s=(5,5),justification='center',visible=False),
-                                sg.Slider(default_value=0,range=((0,48)),resolution=1,
-                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-context_stride_slider-',expand_x=True,s=(10,10),visible=False),   
-                            ],          
-                        ],expand_x=True,relief=sg.RELIEF_SOLID,border_width=0,visible=True),   
-                    ],   
-                    # terminal     
-                    [
-                        sg.MLine( k='-ML2-', reroute_stdout=True,write_only=False,reroute_cprint=True,
-                        background_color='black', text_color='white', autoscroll=True, auto_refresh=True,expand_x=True,expand_y=True,visible=True)
-                    ],
-        ]
 
     center_col_n = [     
         [
@@ -213,7 +48,7 @@ def main():
                 
                     [sg.Image("",expand_x=True,k='-vid_out-',background_color="black")
                     ],               
-                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
+                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=color.GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
         ], 
         [
             
@@ -232,7 +67,7 @@ def main():
                     sg.Checkbox('GIF',k='-save_gif_format-',default=True),
                     sg.Checkbox('Frames',k='-save_video_frames-',default=False),
                 ],           
-                ],expand_x=True,element_justification='l',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',visible=True),                                 
+                ],expand_x=True,element_justification='l',relief=sg.RELIEF_FLAT,border_width=0,background_color=color.GRAY_9900,vertical_alignment='center',visible=True),                                 
 
         ],
         [
@@ -248,7 +83,7 @@ def main():
                 [
 
                     sg.T('Duration',s=(20,1)),
-                    sg.In(2,k='-duration_music_post-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
+                    sg.In(2,k='-duration_music_post-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=color.GRAY),
                     sg.Slider(default_value=2,range=((1,30)),resolution=1,
                     orientation='horizontal',disable_number_display=True,enable_events=True,k='-duration_music_post_slider-',expand_x=True,s=(10,10)),        
 
@@ -258,7 +93,7 @@ def main():
                     sg.Button('Add/Replace',k='-add_music_post-',expand_x=True),
                     # sg.Button('Play',k='-play_music_post-',expand_x=True),
                 ]            
-                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
+                ],expand_x=True,element_justification='center',relief=sg.RELIEF_FLAT,border_width=0,background_color=color.GRAY_9900,vertical_alignment='center',s=(400,400),visible=True), 
         ],            
     ]
 
@@ -297,43 +132,40 @@ def main():
                 sg.Frame('',[
                     [                      
                             sg.Text('Help support this project'),
-                            sg.Button(image_data=patreon,key='PATREON_BTN_KEY',button_color=(GRAY_9900)),            
+                            sg.Button(image_data=icon.patreon,key='PATREON_BTN_KEY',button_color=(color.GRAY_9900)),            
                     ],
                     ],expand_x=True,element_justification='r',border_width=0,pad=(0,0),relief=sg.RELIEF_FLAT
                 ),
-            ],        
+            ],     
+         
             [
-                [
-                            sg.Text('Model'),
-                            sg.Combo(sorted(models_list), default_value=sg.user_settings_get_entry("selected_model", ''), size=(80, 1), key="-selected_model-",expand_x=False,enable_events=True, readonly=True),  
-                            sg.I(visible=False,key='-models_path-',enable_events=True),
-                            sg.FolderBrowse('Set models folder',enable_events=True),
+                sg.Column(about_layout.create_layout(), key=ABOUT_COL, element_justification='c', expand_x=True,expand_y=True,visible=False),
 
-
-                            sg.In(0.8,k='-lora_alpha-',s=(5,5),justification='center',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=GRAY),
-                            sg.Slider(default_value=0.8,range=((0,1)),resolution=0.1,
-                            orientation='horizontal',disable_number_display=True,enable_events=True,k='-lora_alpha_slider-',expand_x=False,s=(15,10)),                                 
-                            sg.Text('Lora'),
-                            sg.Combo(sorted(lora_models_list), default_value=sg.user_settings_get_entry("selected_lora", ''), size=(40, 1), key="-selected_lora-",expand_x=False,enable_events=True, readonly=True),  
-                            sg.I(visible=False,key='-lora_path-',enable_events=True),
-                            sg.FolderBrowse('Set lora folder',enable_events=True)                            
-
-                ],
-                    ],    
+            ],  
             [
-                        cpbar.full_layout("-pbar_steps-",visible=True,it_name="step"),
-                        cpbar.min_layout("-pbar_frames-",visible=True,it_name="fr"),
-                        cpbar.full_layout("-pbar_samples-",visible=True,it_name="sample",show_it_per_sec=False),
+                sg.Column(models_bar_layout.create_layout(), key=ABOUT_COL, element_justification='l', expand_x=True,expand_y=True,visible=True),
+
+            ],                  
+            [
+                navigation_layout.create_layout()
+            ],                
+            [
+                cpbar.full_layout("-pbar_steps-",visible=True,it_name="step"),
+                cpbar.min_layout("-pbar_frames-",visible=True,it_name="fr"),
+                cpbar.full_layout("-pbar_samples-",visible=True,it_name="sample",show_it_per_sec=False),
             ],                          
+
             [
-                sg.Column(left_col_n, key='c1', element_justification='l', expand_x=True,expand_y=True,visible=True),
+                sg.Column(txt2vid_layout.create_layout(), key=ABOUT_COL, element_justification='c', expand_x=True,expand_y=True,visible=True),
+
+                # sg.Column(left_col_n, key='c1', element_justification='l', expand_x=True,expand_y=True,visible=False),
                 sg.Column(center_col_n, key='c2', element_justification='c', expand_x=True,expand_y=True,visible=True),
                 #Output
                 sg.Column(right_col, key='c3', element_justification='r', expand_x=True,expand_y=True,visible=False)
             ],      
     ]
 
-    window = sg.Window(f'{NAME} - {VER}',layout,finalize=True, resizable=True)
+    window = sg.Window(APP_TITLE,layout,finalize=True, resizable=True)
     window.Maximize()
     flatten_ui_elements(window)
     window['-vid_out-'].expand(True, True)
@@ -343,39 +175,14 @@ def main():
         event, values = window.read(timeout=1000)
         if event == sg.WIN_CLOSED:
             break
-        def setup():
-            pass
-        # setup()
-
+       
+        setup()
         sliders(values,event,window)
+        navigation_layout.handle_tab_event(event, window)
+        about_layout.events(event)
+        models_bar_layout.events(event,values,window)
+        # txt2vid_layout.events(event,values,window)
 
-        if event == '-models_path-':
-            models_path_directory = sg.user_settings_get_entry("models_path", sg.user_settings_set_entry("models_path", values['-models_path-']))
-            print("models_path_directory",models_path_directory)
-            models_list = []
-            if models_path_directory:
-                for filename in os.listdir(models_path_directory):
-                    if filename.endswith(tuple(extensions)):
-                        models_list.append(filename)
-                window['-selected_model-'].update(values=sorted(models_list))
-                
-        if event == '-selected_model-':
-            sg.user_settings_set_entry("selected_model", values['-selected_model-'])
-
-
-
-        if event == '-lora_path-':
-            lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", sg.user_settings_set_entry("lora_models_path", values['-lora_path-']))
-            print("lora_models_path_directory",lora_models_path_directory)
-            models_list = []
-            if lora_models_path_directory:
-                for filename in os.listdir(lora_models_path_directory):
-                    if filename.endswith(tuple(extensions)):
-                        models_list.append(filename)
-                window['-selected_lora-'].update(values=sorted(models_list))
-
-        if event == '-selected_lora-':
-            sg.user_settings_set_entry("selected_lora", values['-selected_lora-'])
 
         if event == '-generate-':
             prompts  = []
@@ -410,11 +217,11 @@ def main():
 
 
             if selected_lora:
-                print("selected_lora",selected_lora)
+                # print("selected_lora",selected_lora)
                 base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
             else:
-                print("no lora",selected_model)
+                # print("no lora",selected_model)
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 base = ""
 
@@ -483,8 +290,6 @@ def main():
                 print("No motion module selected")
 
         if event == '-interrupt-':
-
-
             def interrupt_t():
                 interrupt()
 
@@ -565,16 +370,10 @@ def main():
         if event == '-length_slider-': 
             length = int(values['-length_slider-'])
             if length > 6 and length_warning_1:
-                sg.Popup("Warning", """
-Generating more than a 6-second animation may take a very long time and might not produce the desired results, so use with caution.
-                         """)
+                sg.Popup("Warning", DURATION_WARN_1)
                 length_warning_1 = False
             if length > 30 and length_warning_2:
-                sg.Popup("Warning", """
-Generating more than a 30-second animation may take a very long time and might not produce the desired results, so use with caution.
-
-Music will be added only to the first 30 seconds of the video.
-                         """)   
+                sg.Popup("Warning", DURATION_WARN_2)   
                 length_warning_2 = False             
             window['-duration_music_post_slider-'].update(length)
         
@@ -644,134 +443,8 @@ class ConfigInit:
     n_prompt: List[str] = field(default_factory=list)
     seed: List[int] = field(default_factory=list)
 
-def flatten_ui_elements(window):
-    for widget_key in window.key_dict.keys():
-        try: 
-            window[widget_key].Widget.config(relief='flat')
-        except:
-            # print("error",widget_key)
-            pass
-
-def display_notification(title, message, icon, display_duration_in_ms=DEFAULT_DISPLAY_DURATION_IN_MILLISECONDS, use_fade_in=True, alpha=0.9, location=None):
-
-    # Compute location and size of the window
-    message = textwrap.fill(message, 50)
-    win_msg_lines = message.count("\n") + 1
-
-    screen_res_x, screen_res_y = sg.Window.get_screen_size()
-    win_margin = WIN_MARGIN  # distance from screen edges
-    win_width, win_height = 500, 100 + (14.8 * win_msg_lines)
-    win_location = location if location is not None else (screen_res_x - win_width - win_margin, screen_res_y - win_height - win_margin)
-
-    layout = [[sg.Graph(canvas_size=(win_width, win_height), graph_bottom_left=(0, win_height), graph_top_right=(win_width, 0), key="-GRAPH-",
-                        background_color=WIN_COLOR, enable_events=True)]]
-
-    window = sg.Window(title, layout, background_color=WIN_COLOR, no_titlebar=True,
-                       location=win_location, keep_on_top=True, alpha_channel=0, margins=(0, 0), element_padding=(0, 0),
-                       finalize=True)
-
-    window["-GRAPH-"].draw_rectangle((win_width, win_height), (-win_width, -win_height), fill_color=WIN_COLOR, line_color=WIN_COLOR)
-    window["-GRAPH-"].draw_image(data=icon, location=(20, 20))
-    window["-GRAPH-"].draw_text(title, location=(64, 20), color=TEXT_COLOR, font=("Arial", 12, "bold"), text_location=sg.TEXT_LOCATION_TOP_LEFT)
-    window["-GRAPH-"].draw_text(message, location=(64, 44), color=TEXT_COLOR, font=("Arial", 9), text_location=sg.TEXT_LOCATION_TOP_LEFT)
-
-    # change the cursor into a "hand" when hovering over the window to give user hint that clicking does something
-    window['-GRAPH-'].set_cursor('hand2')
-
-    if use_fade_in == True:
-        for i in range(1,int(alpha*100)):               # fade in
-            window.set_alpha(i/100)
-            event, values = window.read(timeout=20)
-            if event != sg.TIMEOUT_KEY:
-                window.set_alpha(1)
-                break
-        event, values = window(timeout=display_duration_in_ms)
-        if event == sg.TIMEOUT_KEY:
-            for i in range(int(alpha*100),1,-1):       # fade out
-                window.set_alpha(i/100)
-                event, values = window.read(timeout=20)
-                if event != sg.TIMEOUT_KEY:
-                    break
-    else:
-        window.set_alpha(alpha)
-        event, values = window()
-
-    window.close()
-#region sliders
-
-def slider(key,target_key,values,event,window):
-    if event == key:
-        slider = int(values[key])
-        slider = slider_add_prefix_zero_for_time(slider)
-        window[target_key].update(value=slider)    
-
-def slider_float(key,target_key,values,event,window):
-    if event == key:
-        slider = values[key]
-        window[target_key].update(value=slider)    
-
-def slider_int(key,target_key,values,event,window):
-    if event == key:
-        slider = int(values[key])
-        window[target_key].update(value=slider)  
-
-def slider_add_prefix_zero_for_time(slider):
-        if slider < 10:
-            slider_prefi= f'0{slider}'
-            slider_out = slider_prefi
-        if slider >= 10:
-            slider_out = slider
-        return slider_out
-
-def sliders(values,event,window):
-    slider_int('-sampling_steps_slider-','-sampling_steps-',values,event,window)
-    slider_float('-cfg_scale_slider-','-cfg_scale-',values,event,window)
-    slider_int('-batch_count_slider-', '-batch_count-',values,event,window)
-    slider_int('-width_slider-','-width-',values,event,window)
-    slider_int('-height_slider-','-height-',values,event,window)
-    slider_int('-seed_slider-','-seed-',values,event,window)
-    slider_int('-length_slider-','-length-',values,event,window)
-    slider_int('-context_length_slider-','-context_length-',values,event,window)
-    slider_int('-context_stride_slider-','-context_stride-',values,event,window)
-    slider_int('-duration_music_post_slider-','-duration_music_post-',values,event,window)
-    slider_int('-length_slider-','-duration_music_post-',values,event,window)
-    slider_float('-lora_alpha_slider-','-lora_alpha-',values,event,window)
-
-
-
-    
-
-#endregion sliders
-    
-def set_models_path(file_list, extensions, models_path_directory):
-    if models_path_directory:
-        # print('models_path_directory set',models_path_directory)
-        for filename in os.listdir(models_path_directory):
-            if filename.endswith(tuple(extensions)):
-                file_list.append(filename)    
-    else:
-        # print('no models_path_directory set yet')
-        sg.user_settings_set_entry("models_path", 'models/checkpoints')
-        models_path_directory = sg.user_settings_get_entry("models_path", '')
-        if models_path_directory:
-            for filename in os.listdir(models_path_directory):
-                if filename.endswith(tuple(extensions)):
-                    file_list.append(filename)
-
-def set_lora_models_path(file_list, extensions, lora_models_path_directory):
-    if lora_models_path_directory:
-        # print('lora_models_path_directory set',lora_models_path_directory)
-        for filename in os.listdir(lora_models_path_directory):
-            if filename.endswith(tuple(extensions)):
-                file_list.append(filename)    
-    else:
-        # print('no lora_models_path_directory set yet')
-        sg.user_settings_set_entry("lora_models_path", 'models/checkpoints')
-        lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
-        if lora_models_path_directory:
-            for filename in os.listdir(lora_models_path_directory):
-                if filename.endswith(tuple(extensions)):
-                    file_list.append(filename)
+def setup():  
+    pass
 
 def image_bio_video_player(image,size):
     image1 = image
@@ -784,238 +457,16 @@ def image_bio_video_player(image,size):
 def btn(name):
     return sg.Button(name, size=(6, 1),expand_x=True)
 
-def init_vlc_player(window):
-    inst = vlc.Instance('--quiet --no-xlib')
-    list_player = inst.media_list_player_new()
-    media_list = inst.media_list_new([])
-    list_player.set_media_list(media_list)
-    list_player.set_playback_mode(vlc.PlaybackMode.loop)
-    player = list_player.get_media_player()
 
-    if PLATFORM.startswith('linux'):
-        player.set_xwindow(window['-vid_out-'].Widget.winfo_id())
-    else:
-        player.set_hwnd(window['-vid_out-'].Widget.winfo_id())
-    return inst,list_player,media_list
 
-def add_and_play_video(list_player, media_list, video_path):
-    full_models_path_directory = os.path.normpath(os.path.join(current_folder, f"{video_path}"))
-    media_list.add_media(full_models_path_directory)
-    list_player.set_media_list(media_list)
-    list_player.play()
 
-def load_model(version):
-    print("Loading model", version)
-    return MusicGen.get_pretrained(version)
-
-def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
-    global MODEL
-    topk = int(topk)
-    if MODEL is None or MODEL.name != model:
-        MODEL = load_model(model)
-
-    if duration > MODEL.lm.cfg.dataset.segment_duration:
-        # raise gr.Error("MusicGen currently supports durations of up to 30 seconds!")
-        print("MusicGen currently supports durations of up to 30 seconds!")
-        # return
-    MODEL.set_generation_params(
-        use_sampling=True,
-        top_k=topk,
-        top_p=topp,
-        temperature=temperature,
-        cfg_coef=cfg_coef,
-        duration=duration,
-    )
-
-    if melody:
-        sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
-        # print(melody.shape)
-        if melody.dim() == 2:
-            melody = melody[None]
-        melody = melody[..., :int(sr * MODEL.lm.cfg.dataset.segment_duration)]
-        output = MODEL.generate_with_chroma(
-            descriptions=[text],
-            melody_wavs=melody,
-            melody_sample_rate=sr,
-            progress=False
-        )
-    else:
-        output = MODEL.generate(descriptions=[text], progress=False)
-
-    output = output.detach().cpu().numpy()
-    return MODEL.sample_rate, output
-
-def predict_and_save(model, text, melody, duration, topk, topp, temperature, cfg_coef, filename):
-    global MODEL
-    topk = int(topk)
-    if MODEL is None or MODEL.name != model:
-        MODEL = load_model(model)
-
-    if duration > MODEL.lm.cfg.dataset.segment_duration:
-        # raise gr.Error("MusicGen currently supports durations of up to 30 seconds!")
-        print("MusicGen currently supports durations of up to 30 seconds!")
-        # return
-    MODEL.set_generation_params(
-        use_sampling=True,
-        top_k=topk,
-        top_p=topp,
-        temperature=temperature,
-        cfg_coef=cfg_coef,
-        duration=duration,
-    )
-
-    if melody:
-        sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
-        # print(melody.shape)
-        if melody.dim() == 2:
-            melody = melody[None]
-        melody = melody[..., :int(sr * MODEL.lm.cfg.dataset.segment_duration)]
-        output = MODEL.generate_with_chroma(
-            descriptions=[text],
-            melody_wavs=melody,
-            melody_sample_rate=sr,
-            progress=False
-        )
-    else:
-        output = MODEL.generate(descriptions=[text], progress=True)
-
-    output = output.detach().cpu()
-    output = output.squeeze()
-
-    # Save the audio file
-    audio_write(filename, output, MODEL.sample_rate, strategy="loudness", loudness_compressor=True)
-
-    return MODEL.sample_rate, output
-
-def save_audio(model, text, melody, duration, topk, topp, temperature, cfg_coef, filename):
-    sample_rate, output = predict(model, text, melody, duration, topk, topp, temperature, cfg_coef)
-
-    # Check the dimensions of the output and reduce if necessary
-    if output.ndim > 2:
-        output = output.squeeze()
-
-    # Save the audio file
-    audio_write(filename, torch.from_numpy(output), sample_rate, strategy="loudness", loudness_compressor=True)
-
-def add_audio_to_video(model, text, melody, duration, topk, topp, temperature, cfg_coef, video_filepath, keep_audio=False, audio_format="mp3"):
-    dir_path = os.path.dirname(video_filepath)
-    logging.basicConfig(filename=os.path.join(dir_path, 'log.log'), level=logging.INFO)
-    logging.info(f'Called add_audio_to_video with log: {locals()}')
-
-    if duration > 30:
-        duration = 30
-        print("MusicGen currently supports durations of up to 30 seconds, only the first 30 seconds will be used")
-        
-    sample_rate, output = predict(model, text, melody, duration, topk, topp, temperature, cfg_coef)
-
-    # Check the dimensions of the output and reduce if necessary
-    if output.ndim > 2:
-        output = output.squeeze()
-
-    temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    temp_audio_filepath = temp_audio_file.name
-
-    # Write the output audio data to the temporary file
-    sf.write(temp_audio_file.name, output, sample_rate)
-
-    # Create an AudioFileClip from the temporary audio file
-    audio = AudioFileClip(temp_audio_file.name)
-
-    # Load the original video
-    video = VideoFileClip(video_filepath)
-
-    # Set the audio of the video to the new audio
-    video_with_audio = video.set_audio(audio)
-
-    # Define the output video filename
-    output_video_filepath = os.path.splitext(video_filepath)[0] + "_with_audio.mp4"
-
-    # Write the video with audio to a file
-    video_with_audio.write_videofile(output_video_filepath)
-
-    # Close the resources
-    audio.close()
-    video.close()
-    video_with_audio.close()
-    temp_audio_file.close()  # Ensure the temporary file is also closed
-
-    # If keep_audio is set to True, move the temp_audio_file to the output video directory
-    if keep_audio:
-        # Depending on the audio_format argument, save the file as .wav or .mp3
-        if audio_format == "wav":
-            output_audio_filepath = os.path.splitext(video_filepath)[0] + "_audio.wav"
-            shutil.move(temp_audio_filepath, output_audio_filepath)
-        elif audio_format == "mp3":
-            output_audio_filepath = os.path.splitext(video_filepath)[0] + "_audio.mp3"
-            audio = AudioSegment.from_wav(temp_audio_filepath)
-            audio.export(output_audio_filepath, format="mp3")
-            os.unlink(temp_audio_filepath)  # delete the temporary .wav file
-        else:
-            raise ValueError("Unsupported audio_format. Please choose either 'wav' or 'mp3'.")
-        
-    # output_video_filepath = add_text_to_video_ffmpeg(output_video_filepath, GITHUB, 'Bottom right', font_size=12, font_color='#817d73', font_file='fonts/roboto.ttf')
-    
-    return output_video_filepath
-
-def add_text_to_video_ffmpeg(video_filepath, text, position, font_size=20, font_color='#FF02CC', font_file='fonts/roboto.ttf'):
-    # Set position based on user input
-    positions = {
-        'Top center': 'x=(w-text_w)/2:y=10',
-        'Bottom center': 'x=(w-text_w)/2:y=h-th-10',
-        'Centered': 'x=(w-text_w)/2:y=(h-text_h)/2',
-        'Top left': 'x=10:y=10',
-        'Top right': 'x=w-tw-10:y=10',
-        'Bottom left': 'x=10:y=h-th-10',
-        'Bottom right': 'x=w-tw-10:y=h-th-10'
-    }
-
-    position_str = positions.get(position, 'x=10:y=10')  # Default to 'Top left' if input is not recognized
-    
-    output_filepath = os.path.splitext(video_filepath)[0] + "_with_text.mp4"
-
-    part_1 = f"ffmpeg -y -i '{video_filepath}' -vf"
-    part_2 = f'"drawtext=fontfile={font_file}:text={text}'
-    part_3 = f':{position_str}:fontsize={font_size}:fontcolor={font_color}"'
-    fin = f'{output_filepath}'
-
-    call_string = f'{part_1} {part_2}{part_3} {fin}'
-
-    call = shlex.split(call_string)
-    subprocess.call(call)
-    return output_filepath
-
-prompts_list = [
-    "",
-    "a tiger sits in a magic forest,fantasy,magic,sparks,trees,grass", 
-    "a beautiful landscape painting of a mountain and a lake",
-    "best quality, masterpiece, 1girl, looking at viewer, blurry background, upper body, contemporary, dress",
-    "masterpiece, best quality, 1girl, solo, cherry blossoms, hanami, pink flower, white flower, spring season, wisteria, petals, flower, plum blossoms, outdoors, falling petals, white hair, black eyes,",
-    "best quality, masterpiece, 1boy, formal, abstract, looking at viewer, masculine, marble pattern",
-    "best quality,single build,architecture, blue_sky, building,cloudy_sky, day, fantasy, fence, field, house, build,architecture,landscape, moss, outdoors, overgrown, path, river, road, rock, scenery, sky, sword, tower, tree, waterfall",
-    "black_border, building, city, day, fantasy, ice, landscape, letterboxed, mountain, ocean, outdoors, planet, scenery, ship, snow, snowing, water, watercraft, waterfall, winter",
-    "mysterious sea area, fantasy,build,concept",
-
-    
-    "Tomb Raider,Scenography,Old building",       
-]
-prompts_neg_list = [
-     "",   
-    "ugly,blur,jpeg artifacts,worst quality,low quality,normal quality,lowres,grayscale,EasyNegative,child",
-    "badhandv4,easynegative,ng_deepnegative_v1_75t,verybadimagenegative_v1.3, bad-artist, bad_prompt_version2-neg, teeth",
-    "easynegative,bad_construction,bad_structure,bad_wail,bad_windows,blurry,cloned_window,cropped,deformed,disfigured,error,extra_windows,extra_chimney,extra_door,extra_structure,extra_frame,fewer_digits,fused_structure,gross_proportions,jpeg_artifacts,long_roof,low_quality,structure_limbs,missing_windows,missing_doors,missing_roofs,mutated_structure,mutation,normal_quality,out_of_frame,owres,poorly_drawn_structure,poorly_drawn_house,signature,text,too_many_windows,ugly,username,uta,watermark,worst_quality",
-    ]
-audio_model_list = [
-    "melody",
-    "small",
-    "medium",
-    "large",
-]
-music_prompts_list = [
-    "drum and bass beat with intense percussions",
-    "classic reggae track with an electronic guitar solo",
-    "80s electronic track with melodic synthesizers, catchy beat and groovy bass",
-    "Pop dance track with catchy melodies, tropical percussion, and upbeat rhythms, perfect for the beach",
-]
 if __name__ == '__main__':
+    sg.set_options(
+        sg.theme('Dark Gray 15'),
+
+        # ttk_theme='alt',
+        sbar_relief=sg.RELIEF_FLAT,        
+        sbar_width=15,sbar_trough_color=0,
+    )    
     
     main()
