@@ -9,7 +9,7 @@ nav_tab_button_active_color=(color.DARK_GRAY,color.DIM_BLUE)
 def create_layout():
     nav_tabs = [       
         {
-            'title':"Text to Animation",
+            'title':TXT2VID_TITLE,
             'key': TXT2VID_TAB_BTN,
             'size':(20,1),
             'disabled':False,
@@ -18,8 +18,8 @@ def create_layout():
             'visible':True,
         },
         {
-            'title':"Image to Animation",
-            'key': TOOLBOX_TAB_BTN,
+            'title':IMG2VID_TITLE,
+            'key': IMG2VID_TAB_BTN,
             'size':(20,1),
             'disabled':False,
             'default':False,
@@ -67,10 +67,10 @@ def create_layout():
 def handle_tab_event(event,window):
 
     tab_elements = {
-        # PROJECTS_TAB_BTN: [window[PROJECTS_COL_1],window[PROJECTS_COL_2]],
         ABOUT_TAB_BTN: [window[ABOUT_COL]],
+        TXT2VID_TAB_BTN: [window[TXT2VID_COL]],
+        IMG2VID_TAB_BTN: [window[IMG2VID_COL]],
         # SETTINGS_TAB_BTN: [window[SETTINGS_COL]],
-        # TOOLBOX_TAB_BTN: [window[TOOLBOX_COL]]
     }
 
     if event in tab_elements:

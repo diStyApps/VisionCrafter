@@ -25,56 +25,25 @@ FONT_H1 = 'Arial 14'
 FONT_H2_BOLD = 'Arial 14 bold'
 FONT_H1_BOLD = 'Arial 18 bold'
 
+#nav cols
 
-# # colors
-# WIN_COLOR = "#282828"
-# TEXT_COLOR = "#ffffff"
-
-# DEFAULT_DISPLAY_DURATION_IN_MILLISECONDS = 10000
-
-# Base64 Images to use as icons in the window
-
-# #nav 
-# PROJECTS_COL_1 = '-projects_col_1-'
-# PROJECTS_COL_2 = '-projects_col_2-'
 ABOUT_COL = '-about_col-'
-# SYSTEM_INFO_COL = '-system_stats_col-'
-
-# SETTINGS_COL = '-settings_col-'
-# TOOLBOX_COL = '-toolbox_col-'
-# #layout
-# PROJECTS_LIST_MENU = '-projects_list_menu-'
-# PROJECTS_COL_PLACEHOLDER = '-projects_col_placeholder-'
-
+TXT2VID_COL = '-txt2video_col-'
+IMG2VID_COL = '-img2video_col-'
+SETTINGS_COL = '-settings_col-'
+MODELSBAR_COL = '-modelsbar_col-'
 
 #nav buttons
 TXT2VID_TAB_BTN = '-txt2video_tab-'
-SYSTEM_STATS_TAB_BTN = '-system_stats_tab-'
+IMG2VID_TAB_BTN = '-img2video_tab-'
 SETTINGS_TAB_BTN = '-settings_tab-'
-TOOLBOX_TAB_BTN = '-toolbox_tab-'
 ABOUT_TAB_BTN = '-about_tab-'
 
-
+#nav titles
+TXT2VID_TITLE = "Text to Animation"
+IMG2VID_TITLE = "Image to Animation"
 SETTINGS_TITLE = "Settings"
 ABOUT_TITLE = "About"
-
-# SELECTED_PROJECT = '-selected_project_'
-# SELECT_PROJECT = '-select_project_'
-
-# SET_APP_ARGS = "-set_app_args-"
-# RUN_APP_FUNC = "-run_app_func-"
-# SELECTED_APP_QUICK = '-selected_app_quick-'
-# SET_PROJECT_PATH = "-set_project_path-"
-# ACTIVATE_PROJECT_PATH = "-activate_project_path-"
-# ADD_PROJECT_FOLDER_NAME = "-add_project_folder_name-"
-# SAVE_DEFAULT_ARGS= "-save_default_args-"
-# INSTALL_EXT = "-install_ext-"
-# SELECT_APP = "-select_app_"
-# SELECTED_APP = "-selected_app_"
-# INIT_DEFAULT_PROJECT_ARGS = "-init_default_project_args-"
-
-
-
 
 DURATION_WARN_1="""Generating more than a 6-second animation may take a very long time and might not produce the desired results,
 so use with caution.

@@ -19,6 +19,7 @@ from repos.animatediff.scripts.animate import interrupt
 import layout.navigation as navigation_layout
 import layout.about as about_layout
 import layout.txt2vid as txt2vid_layout
+import layout.img2vid as img2vid_layout
 import layout.models_bar as models_bar_layout
 
 import util.json_tools as jt
@@ -137,14 +138,8 @@ def main():
                     ],expand_x=True,element_justification='r',border_width=0,pad=(0,0),relief=sg.RELIEF_FLAT
                 ),
             ],     
-         
             [
-                sg.Column(about_layout.create_layout(), key=ABOUT_COL, element_justification='c', expand_x=True,expand_y=True,visible=False),
-
-            ],  
-            [
-                sg.Column(models_bar_layout.create_layout(), key=ABOUT_COL, element_justification='l', expand_x=True,expand_y=True,visible=True),
-
+                sg.Column(models_bar_layout.create_layout(), key=MODELSBAR_COL, element_justification='l', expand_x=True,expand_y=True,visible=True),
             ],                  
             [
                 navigation_layout.create_layout()
@@ -156,12 +151,13 @@ def main():
             ],                          
 
             [
-                sg.Column(txt2vid_layout.create_layout(), key=ABOUT_COL, element_justification='c', expand_x=True,expand_y=True,visible=True),
-
+                sg.Column(txt2vid_layout.create_layout(), key=TXT2VID_COL, element_justification='c', expand_x=True,expand_y=True,visible=True),
+                sg.Column(img2vid_layout.create_layout(), key=IMG2VID_COL, element_justification='c', expand_x=True,expand_y=True,visible=False),
+                sg.Column(about_layout.create_layout(), key=ABOUT_COL, element_justification='c', expand_x=True,expand_y=True,visible=False),
                 # sg.Column(left_col_n, key='c1', element_justification='l', expand_x=True,expand_y=True,visible=False),
                 sg.Column(center_col_n, key='c2', element_justification='c', expand_x=True,expand_y=True,visible=True),
                 #Output
-                sg.Column(right_col, key='c3', element_justification='r', expand_x=True,expand_y=True,visible=False)
+                # sg.Column(right_col, key='c3', element_justification='r', expand_x=True,expand_y=True,visible=False)
             ],      
     ]
 
