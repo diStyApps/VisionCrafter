@@ -31,8 +31,6 @@ from util.sliders import sliders
 from util.ui_tools import flatten_ui_elements,expand_column_helper,clear_items_keys
 from util.vlc import init_vlc_player,add_and_play_video
 from util.musicgen import add_audio_to_video
-# -------------------------------------------------------------------
-# Constants, defaults, Base64 icons
 
 current_folder = os.getcwd()
 
