@@ -27,6 +27,8 @@ from diffusers.schedulers import (
     PNDMScheduler,
 )
 from diffusers.utils import deprecate, logging, BaseOutput
+from PIL import Image
+import torchvision
 
 from einops import rearrange
 
@@ -317,14 +319,12 @@ class AnimationPipeline(DiffusionPipeline):
         video = []
         device = self._execution_device
         window.write_event_value('-total_frames_progress_bar-',latents.shape[0])
-
         for frame_idx in tqdm(range(latents.shape[0])):
             if interrupted:
                 print("interrupting execution...")
                 break             
             video.append(self.vae.decode(latents[frame_idx:frame_idx+1].to(device)).sample)
             window.write_event_value('-frames_progress_bar-',(frame_idx))
-
         video = torch.cat(video)
         video = rearrange(video, "(b f) c h w -> b c f h w", f=video_length)
         video = (video / 2 + 0.5).clamp(0, 1)
@@ -364,27 +364,8 @@ class AnimationPipeline(DiffusionPipeline):
                 f" {type(callback_steps)}."
             )
         
-    def prepare_latents(self, init_image, batch_size, num_channels_latents, video_length, height, width, dtype, device, generator, latents=None):
-
-    # def prepare_latents(self, batch_size, num_channels_latents, video_length, height, width, dtype, device, generator, latents=None):
+    def prepare_latents(self, batch_size, num_channels_latents, video_length, height, width, dtype, device, generator, latents=None):
         shape = (batch_size, num_channels_latents, video_length, height // self.vae_scale_factor, width // self.vae_scale_factor)
-        if init_image is not None:
-            image = PIL.Image.open(init_image)
-            image = preprocess_image(image)
-            if not isinstance(image, (torch.Tensor, PIL.Image.Image, list)):
-                raise ValueError(
-                    f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
-                )
-            image = image.to(device=device, dtype=dtype)
-            if isinstance(generator, list):
-                init_latents = [
-                    self.vae.encode(image[i : i + 1]).latent_dist.sample(generator[i]) for i in range(batch_size)
-                ]
-                init_latents = torch.cat(init_latents, dim=0)
-            else:
-                init_latents = self.vae.encode(image).latent_dist.sample(generator)
-        else:
-            init_latents = None        
         if isinstance(generator, list) and len(generator) != batch_size:
             raise ValueError(
                 f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
@@ -418,7 +399,6 @@ class AnimationPipeline(DiffusionPipeline):
         window,
         prompt: Union[str, List[str]],
         video_length: Optional[int],
-        init_image: str = None,
         temporal_context: Optional[int] = None,
         strides: int = 3,
         overlap: int = 4,
@@ -437,11 +417,12 @@ class AnimationPipeline(DiffusionPipeline):
         callback_steps: Optional[int] = 1,
         seq_policy=overlap_policy.uniform,
         fp16=False,
+        start_image_path='',
+        offset=0,        
         **kwargs,
-
-        
     ):
-  
+        # print('start_image_path', start_image_path)
+        # print('offset', offset)
         # Default height and width to unet
         height = height or self.unet.config.sample_size * self.vae_scale_factor
         width = width or self.unet.config.sample_size * self.vae_scale_factor
@@ -479,7 +460,6 @@ class AnimationPipeline(DiffusionPipeline):
         # Prepare latent variables
         num_channels_latents = self.unet.in_channels
         latents = self.prepare_latents(
-            init_image,
             batch_size * num_videos_per_prompt,
             num_channels_latents,
             video_length,
@@ -493,64 +473,155 @@ class AnimationPipeline(DiffusionPipeline):
         latents_dtype = latents.dtype
 
         # Prepare extra step kwargs.
-        extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
-        total = sum(
-            len(list(seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap)))
-            for i in range(len(timesteps))
-        )
-        # Denoising loop
-        num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
-        window.write_event_value('-total_steps_progress_bar-',total)
-        steps_idx = 0
-        with self.progress_bar(total=total) as progress_bar:
-            
-            for i, t in enumerate(timesteps):
-                if interrupted:
-                    print("interrupting execution...")
-                    break 
-                noise_pred = torch.zeros((latents.shape[0] * (2 if do_classifier_free_guidance else 1),
-                                          *latents.shape[1:]), device=latents.device, dtype=latents_dtype)
-                counter = torch.zeros((1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents_dtype)
-                for seq in seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap):
-                    # expand the latents if we are doing classifier free guidance
-                    latent_model_input = latents[:, :, seq].to(device)\
-                        .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
-                    latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+        if start_image_path != '':
+            extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
+            total = sum(
+                len(list(seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap)))
+                for i in range(len(timesteps))
+            )            
+            if start_image_path != '':
+                start_image = (torchvision.transforms.functional.pil_to_tensor(Image.open(start_image_path).resize((width, height)))/255)[:3, :, :].to('cuda').to(torch.float).unsqueeze(0)
+                start_image = self.vae.encode(start_image.mul(2).sub(1)).latent_dist.sample().view(1, 4, 64, 64) * 0.18215
+            else:
+                start_image = latents[:, :, 0]           
+            LOOPS = 1
+            to_decode = []
+            previous_end_latent = None
 
-                    # predict the noise residual
-                    with torch.autocast('cuda', enabled=fp16, dtype=torch.float16):
-                        pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)
-                    noise_pred[:, :, seq] += pred.sample.to(dtype=latents_dtype, device=cpu)
-                    counter[:, :, seq] += 1
-                    progress_bar.update()
-                    window.write_event_value('-steps_progress_bar-',steps_idx)
-                    steps_idx += 1
+            for loopn in range(LOOPS):
+                # If there is a previous_end_latent, then create a transition from it to the start_image
+                if loopn > 0 and previous_end_latent is not None:
+                    start_image = previous_end_latent
 
 
-                # perform guidance
-                if do_classifier_free_guidance:
-                    noise_pred_uncond, noise_pred_text = (noise_pred / counter).chunk(2)
-                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                steps_diff = len(timesteps) - video_length
+                if start_image_path != '' or loopn > 0:
+                    all_latents = start_image.unsqueeze(2).repeat(1, 1, latents.shape[2], 1, 1)
+                    latents = self.scheduler.add_noise(all_latents, torch.randn_like(all_latents), timesteps[offset])
 
-                # compute the previous noisy sample x_t -> x_t-1
-                latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+                # The original denoising loop
+                num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
+                # print('new_total', (int(total-((latents.shape[2]/overlap)*offset))))
 
-                # call the callback, if provided
-                if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
-                    if callback is not None and i % callback_steps == 0:
-                        callback(i, t, latents)
+                window.write_event_value('-total_steps_progress_bar-',(total-((latents.shape[2]/overlap)*offset)))
 
-        if not interrupted:
-        # Post-processing
-            video = self.decode_latents(latents,window)
+                steps_idx = 0
+                with self.progress_bar(total=num_inference_steps-offset) as progress_bar:
+                    for i, t in enumerate(timesteps[offset:]):
+                        if interrupted:
+                            print("interrupting execution...")
+                            break 
+                        if start_image_path != '' or loopn > 0:
+                            latents[:, :, -i+steps_diff-1-offset] = self.scheduler.add_noise(start_image, torch.randn_like(start_image), timesteps[i+offset])
 
-            # Convert to tensor
-            if output_type == "tensor":
-                video = torch.from_numpy(video)
+                        noise_pred = torch.zeros((latents.shape[0] * (2 if do_classifier_free_guidance else 1),
+                                                *latents.shape[1:]), device=latents.device, dtype=latents_dtype)
+                        counter = torch.zeros((1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents_dtype)
+                        for seq in seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap):
+                            # expand the latents if we are doing classifier free guidance
+                            latent_model_input = latents[:, :, seq].to(device)\
+                                .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
+                            latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
-            if not return_dict:
-                return video
+                            # predict the noise residual
+                            with torch.autocast('cuda', enabled=fp16, dtype=torch.float16):
+                                pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)
+                            noise_pred[:, :, seq] += pred.sample.to(dtype=latents_dtype, device=latents.device)
+                            counter[:, :, seq] += 1
+                            progress_bar.update()
+                            window.write_event_value('-steps_progress_bar-',steps_idx)
+                            steps_idx += 1
 
-            return AnimationPipelineOutput(videos=video)
+                        # perform guidance
+                        if do_classifier_free_guidance:
+                            noise_pred_uncond, noise_pred_text = (noise_pred / counter).chunk(2)
+                            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+                        # compute the previous noisy sample x_t -> x_t-1
+                        latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+
+                        # call the callback, if provided
+                        if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
+                            if callback is not None and i % callback_steps == 0:
+                                callback(i, t, latents)
+                previous_end_latent = latents[:, :, -1]
+                to_decode.append(latents)
+            if not interrupted:
+                # Post-processing
+                video = self.decode_latents(torch.cat(to_decode, 2), window)
+
+                # Convert to tensor
+                if output_type == "tensor":
+                    video = torch.from_numpy(video)
+
+                if not return_dict:
+                    return video
+
+                return AnimationPipelineOutput(videos=video)
+            else:
+                return None
+
+
         else:
-            return None
+            # Prepare extra step kwargs.
+            extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
+            total = sum(
+                len(list(seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap)))
+                for i in range(len(timesteps))
+            )
+            # Denoising loop
+            num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
+            window.write_event_value('-total_steps_progress_bar-',total)
+            steps_idx = 0
+            with self.progress_bar(total=total) as progress_bar:
+                
+                for i, t in enumerate(timesteps):
+                    if interrupted:
+                        print("interrupting execution...")
+                        break 
+                    noise_pred = torch.zeros((latents.shape[0] * (2 if do_classifier_free_guidance else 1),
+                                            *latents.shape[1:]), device=latents.device, dtype=latents_dtype)
+                    counter = torch.zeros((1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents_dtype)
+                    for seq in seq_policy(i, num_inference_steps, latents.shape[2], temporal_context, strides, overlap):
+                        # expand the latents if we are doing classifier free guidance
+                        latent_model_input = latents[:, :, seq].to(device)\
+                            .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
+                        latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+
+                        # predict the noise residual
+                        with torch.autocast('cuda', enabled=fp16, dtype=torch.float16):
+                            pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)
+                        noise_pred[:, :, seq] += pred.sample.to(dtype=latents_dtype, device=cpu)
+                        counter[:, :, seq] += 1
+                        progress_bar.update()
+                        window.write_event_value('-steps_progress_bar-',steps_idx)
+                        steps_idx += 1
+
+
+                    # perform guidance
+                    if do_classifier_free_guidance:
+                        noise_pred_uncond, noise_pred_text = (noise_pred / counter).chunk(2)
+                        noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+                    # compute the previous noisy sample x_t -> x_t-1
+                    latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+
+                    # call the callback, if provided
+                    if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
+                        if callback is not None and i % callback_steps == 0:
+                            callback(i, t, latents)
+
+            if not interrupted:
+            # Post-processing
+                video = self.decode_latents(latents,window)
+
+                # Convert to tensor
+                if output_type == "tensor":
+                    video = torch.from_numpy(video)
+
+                if not return_dict:
+                    return video
+
+                return AnimationPipelineOutput(videos=video)
+            else:
+                return None

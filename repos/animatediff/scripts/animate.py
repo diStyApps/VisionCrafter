@@ -189,7 +189,6 @@ def main(args,window):
                     sample = pipeline(
                         window,
                         prompt,
-                        init_image          = init_image,
                         negative_prompt     = n_prompt,
                         num_inference_steps = model_config.steps,
                         guidance_scale      = model_config.guidance_scale,
@@ -200,6 +199,8 @@ def main(args,window):
                         strides             = args.context_stride + 1,
                         overlap             = args.context_overlap,
                         fp16                = not args.fp32,
+                        start_image_path = args.init_image,
+                        offset = int(args.init_img_strength * model_config.steps),
                     )
                     if sample is None:
                         # break

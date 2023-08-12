@@ -15,7 +15,7 @@ def create_layout():
             'disabled':False,
             'expand_x':True,
             'default':True,
-            'visible':True,
+            'visible':False,
         },
         {
             'title':IMG2VID_TITLE,

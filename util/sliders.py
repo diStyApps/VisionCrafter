@@ -35,3 +35,4 @@ def sliders(values,event,window):
     slider_int('-duration_music_post_slider-','-duration_music_post-',values,event,window)
     slider_int('-length_slider-','-duration_music_post-',values,event,window)
     slider_float('-lora_alpha_slider-','-lora_alpha-',values,event,window)
+    slider_float('-init_img_strength_slider-','-init_img_strength-',values,event,window)

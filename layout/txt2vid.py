@@ -36,7 +36,17 @@ def create_layout():
                                                 
                             ],expand_x=True,element_justification='center',vertical_alignment='center',s=(150,150),relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=color.GRAY
                         ),
-                    ],     
+                    ],  
+                    [
+                        sg.T('Image',s=(10,1)),
+                        sg.Input(k='-init_img_path-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-init_img_path_FileBrowse-',file_types=(image_file_ext)) ,     
+                    ],                    
+                    [
+                        sg.T('Init Image strength',s=(20,1)),
+                        sg.In(0.3,k='-init_img_strength-',s=(5,5),justification='center'),
+                        sg.Slider(default_value=0.3,range=((0,0.5)),resolution=0.01,
+                        orientation='horizontal',disable_number_display=True,enable_events=True,k='-init_img_strength_slider-',expand_x=True,s=(10,10)),                           
+                    ] ,                           
                     [
                         sg.Combo(prompts_list, default_value=sg.user_settings_get_entry("selected_prompt", ''), size=(40, 10), key="-selected_prompt-",expand_x=True,enable_events=True, readonly=True), 
                         sg.Button('Set',k='-set_prompt-'),

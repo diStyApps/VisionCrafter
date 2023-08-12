@@ -200,7 +200,8 @@ def main():
             context_length=int(values['-context_length-'])
             context_stride = int(values['-context_stride-'])
             lora_alpha = float(values['-lora_alpha-'])
-            '-save_gif_format-'
+            init_img_strength = float(values['-init_img_strength-'])
+            init_img_path = values['-init_img_path-']
             save_gif_format = values['-save_gif_format-']
             save_video_frames = values['-save_video_frames-']
             selected_model = sg.user_settings_get_entry("selected_model", '')
@@ -211,16 +212,14 @@ def main():
 
 
             if selected_lora:
-                # print("selected_lora",selected_lora)
+                print("selected_lora",selected_lora)
                 base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
             else:
-                # print("no lora",selected_model)
+                print("no lora")
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 base = ""
 
-            # models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
-            # base = ""
             motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
             motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15.ckpt"))
             pretrained_model= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/StableDiffusion/stable-diffusion-v1-5"))
@@ -228,13 +227,12 @@ def main():
 
             config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/prompts/result.yaml"))
             inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference.yaml"))
+
             motion_modules = []
             if values['-motion_module_1.4-']:
                 motion_modules.append(motion_modules_mm_sd_v14)
             if values['-motion_module_1.5-']:
                 motion_modules.append(motion_modules_mm_sd_v15)
-            
-
             if motion_modules:    
                 config = ConfigInit(
                     path=models_path_directory,
@@ -247,7 +245,8 @@ def main():
                     lora_alpha=lora_alpha,
                     prompt=prompts,
                     n_prompt=negative_prompts,
-
+                    init_image=init_img_path,
+                    init_img_strength=init_img_strength,
 
                 )        
                 config_dict = asdict(config)
@@ -269,8 +268,10 @@ def main():
                     W=width, 
                     H=height,
                     save_gif_format=save_gif_format,
-                    save_video_frames=save_video_frames                    
+                    save_video_frames=save_video_frames,                    
                     # embeddings_folder=embeddings_folder
+                    init_image=init_img_path,
+                    init_img_strength=init_img_strength,
                 )            
                 def animate_main_t(args):
                     stop_requested = False
@@ -427,7 +428,6 @@ def main():
 class ConfigInit:
     base: str
     path: str
-    # init_image: str
     motion_module: Union[str, List[str]]
     steps: int
     guidance_scale: float
@@ -436,6 +436,8 @@ class ConfigInit:
     prompt: List[str] = field(default_factory=list)
     n_prompt: List[str] = field(default_factory=list)
     seed: List[int] = field(default_factory=list)
+    init_image: str = ""
+    init_img_strength: float = 0.0
 
 def setup():  
     pass
