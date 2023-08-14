@@ -60,9 +60,6 @@ Ideal for producing short videos and GIFs, as well as creating brief cinematic s
 
 Added init image.
 
-<img src="media/gallery/initimg/witch.png">
-<img src="media/gallery/initimg/witch.gif">
-
 Share your work on https://www.reddit.com/r/visioncrafter, created by [@yavuzitconsulting](https://github.com/yavuzitconsulting). You can also find helpful guides and additional information there.
 
 <img src="media/preview/0.0.3/1.gif">
