@@ -54,7 +54,7 @@ def main():
             btn('previous'), btn('play'), btn('next'), btn('stop'),sg.Button('Open Folder',k='-output_open_folder-',expand_x=True),
         ],        
         [
-            sg.Button('Generate',k='-generate-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
+            sg.Button('Generate',k='-generate_validation-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
             sg.Button('Interrupt',k='-interrupt-',expand_x=True,expand_y=True,font='Arial 12 bold',button_color=('#69823c', None),s=(10,2),visible=True),
 
         ],  
@@ -177,8 +177,24 @@ def main():
         models_bar_layout.events(event,values,window)
         # txt2vid_layout.events(event,values,window)
 
+        if event == '-init_img_path-':
+            if  len(values['-init_img_path-'].strip())>0:
+                window['-use_init_img-'].update(True)
+            else:
+                window['-use_init_img-'].update(False)
+
+
+        if event == '-generate_validation-':
+            if values['-use_init_img-']:
+                if all([values['-use_init_img-'], int(values['-height-']) == 512, int(values['-width-']) == 512]):
+                    window.write_event_value('-generate-', values)
+                else:
+                    sg.Popup("The maximum init image generation size is 512x512")
+            else:
+                window.write_event_value('-generate-', values)
 
         if event == '-generate-':
+            # print("generate",event)
             prompts  = []
             negative_prompts = []
             batch_count = int(values['-batch_count-'])

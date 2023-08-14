@@ -39,12 +39,14 @@ def create_layout():
                     ],  
                     [
                         sg.T('Image',s=(10,1)),
-                        sg.Input(k='-init_img_path-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-init_img_path_FileBrowse-',file_types=(image_file_ext)) ,     
+                        sg.Input(k='-init_img_path-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-init_img_path_FileBrowse-',file_types=(image_file_ext)),     
+                        sg.Checkbox('',k='-use_init_img-',default=False),
+
                     ],                    
                     [
                         sg.T('Init Image strength',s=(20,1)),
-                        sg.In(0.3,k='-init_img_strength-',s=(5,5),justification='center'),
-                        sg.Slider(default_value=0.3,range=((0,0.5)),resolution=0.01,
+                        sg.In(0.2,k='-init_img_strength-',s=(5,5),justification='center'),
+                        sg.Slider(default_value=0.2,range=((0,0.5)),resolution=0.01,
                         orientation='horizontal',disable_number_display=True,enable_events=True,k='-init_img_strength_slider-',expand_x=True,s=(10,10)),                           
                     ] ,                           
                     [

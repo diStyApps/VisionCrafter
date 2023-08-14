@@ -1,4 +1,4 @@
-VERSION = '0.0.5'
+VERSION = '0.0.6'
 APP_NAME =  'VisionCrafter'
 APP_TITLE = f"{APP_NAME} - {VERSION}"
 GITHUB = "github.com/diStyApps/VisionCrafter"

@@ -56,15 +56,12 @@ VisionCrafter tool with GUI for AnimateDiff and other projects, that generates a
 
 Ideal for producing short videos and GIFs, as well as creating brief cinematic scenes.
 
-### Update [0.0.5] 
+### Update [0.0.6] 
 
-Added interrupt button, a bit buggy but better then nothing for now.
+Added init image.
 
-### Update [0.0.4] 
-
-Saving options: mp4 (default), GIF, individual frames.
-
-Extended animation limit to 60 seconds (caution: time-consuming and may not yield desired results).
+<img src="media/gallery/initimg/witch.png">
+<img src="media/gallery/initimg/witch.gif">
 
 Share your work on https://www.reddit.com/r/visioncrafter, created by [@yavuzitconsulting](https://github.com/yavuzitconsulting). You can also find helpful guides and additional information there.
 
@@ -101,6 +98,21 @@ git clone https://github.com/diStyApps/VisionCrafter
 
 
 ## Gallery
+
+<table class="center">
+    <tr>
+    <td><img src="media/gallery/initimg/fireplace.png"></td>
+    <td><img src="media/gallery/initimg/fireplace.gif"></td>
+    <td><img src="media/gallery/initimg/tv.png"></td>    
+    <td><img src="media/gallery/initimg/tv1.gif"></td>
+    </tr>
+</table>
+<table class="center">
+    <tr>
+    <td><img src="media/gallery/initimg/witch.png"></td>
+    <td><img src="media/gallery/initimg/witch.gif"></td>
+    </tr>
+</table>
 <table class="center">
     <tr>
     <td><img src="media/gallery/anim/anim (1).gif"></td>
