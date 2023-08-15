@@ -38,9 +38,25 @@ def create_layout():
                         ),
                     ],  
                     [
+                        sg.Frame('LoRa',[
+                            [    
+                                sg.Checkbox('Enable',k='-use_lora-',default=True,background_color=color.GRAY),
+                                sg.Text('Alpha',size=(10,1),background_color=color.GRAY),
+                                sg.In(0.8,k='-lora_alpha-',s=(5,5),justification='l',disabled=True,use_readonly_for_disable=True,disabled_readonly_background_color=color.GRAY),
+                                sg.Slider(default_value=0.8,range=((0,1)),resolution=0.01,
+                                orientation='horizontal',disable_number_display=True,enable_events=True,k='-lora_alpha_slider-',expand_x=True,s=(15,10)),      
+                            ],    
+                                                
+                            ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=color.DARK_GRAY
+                        ),
+                    ],                      
+                    [
+                   
+                    ],                    
+                    [
                         sg.T('Image',s=(10,1)),
                         sg.Input(k='-init_img_path-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-init_img_path_FileBrowse-',file_types=(image_file_ext)),     
-                        sg.Checkbox('',k='-use_init_img-',default=False),
+                        sg.Checkbox('Enable',k='-use_init_img-',default=False),
 
                     ],                    
                     [

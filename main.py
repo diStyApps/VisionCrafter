@@ -220,6 +220,7 @@ def main():
             init_img_path = values['-init_img_path-']
             save_gif_format = values['-save_gif_format-']
             save_video_frames = values['-save_video_frames-']
+            use_lora = values['-use_lora-']
             selected_model = sg.user_settings_get_entry("selected_model", '')
             models_path_directory = sg.user_settings_get_entry("models_path", '')
 
@@ -227,7 +228,7 @@ def main():
             lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
 
 
-            if selected_lora:
+            if selected_lora and use_lora:
                 print("selected_lora",selected_lora)
                 base = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{lora_models_path_directory}/{selected_lora}"))                
