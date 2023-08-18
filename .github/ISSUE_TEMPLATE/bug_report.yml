@@ -50,11 +50,6 @@ body:
       description: "Which Visioncrafter version or commit are you running ? Do not write *Latest Version/repo/commit*, as this means nothing and will have changed by the time we read your issue. Rather, copy the **Version: v1.2.3**"
     validations:
       required: true
-  - type: input
-    id: py-version
-    attributes:
-      label: What Python version are you running on ?
-      description: 3.10.6 , 3.10.7 , 3.10.8 ...
   - type: dropdown
     id: platforms
     attributes:
@@ -63,7 +58,12 @@ body:
       options:
         - Windows
         - Linux
-        - MacOS
+        - MacOS      
+  - type: input
+    id: py-version
+    attributes:
+      label: What Python version are you running on ?
+      description: 3.10.6 , 3.10.7 , 3.10.8 ...
   - type: input
     id: device
     attributes:
