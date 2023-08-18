@@ -50,15 +50,11 @@ body:
       description: "Which Visioncrafter version or commit are you running ? Do not write *Latest Version/repo/commit*, as this means nothing and will have changed by the time we read your issue. Rather, copy the **Version: v1.2.3**"
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: py-version
     attributes:
       label: What Python version are you running on ?
-      multiple: false
-      options:
-        - Python 3.10.x
-        - Python 3.11.x (above, no supported yet)
-        - Python 3.9.x (below, no recommended)
+      description: 3.10.6 , 3.10.7 , 3.10.8 ...
   - type: dropdown
     id: platforms
     attributes:
@@ -73,6 +69,11 @@ body:
     attributes:
         label: What GPU are you running Visioncrafter on?
         description: RTX 3090, RTX 4090, RX6800
+  - type: input
+    id: vram
+    attributes:
+        label: How much GPU VRAM are you running Visioncrafter on?
+        description: 10GB, 12GB, 24GB       
   - type: textarea
     id: logs
     attributes:
