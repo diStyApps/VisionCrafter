@@ -1,0 +1,4 @@
+sitting
+standing
+walking
+dancing

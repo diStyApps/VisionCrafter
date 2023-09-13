@@ -56,11 +56,15 @@ VisionCrafter tool with GUI for AnimateDiff and other projects, that generates a
 
 Ideal for producing short videos and GIFs, as well as creating brief cinematic scenes.
 
-### Update [0.0.6] 
+### Update [0.0.7] 
 
-Added init image.
+Added
+- Support for v2 motion module
+- Custom motion modules
+- Wildcards
+- Some ui improvments
 
-Share your work on https://www.reddit.com/r/visioncrafter, created by [@yavuzitconsulting](https://github.com/yavuzitconsulting). You can also find helpful guides and additional information there.
+
 
 <img src="media/preview/0.0.3/1.gif">
 <img src="media/preview/0.0.2/1.gif">
@@ -95,7 +99,14 @@ git clone https://github.com/diStyApps/VisionCrafter
 
 
 ## Gallery
-
+<table class="center">
+    <tr>
+    <td><img src="media/gallery/v2/1.gif"></td>
+    <td><img src="media/gallery/v2/2.gif"></td>
+    <td><img src="media/gallery/v2/3.gif"></td>
+    <td><img src="media/gallery/v2/4.gif"></td>
+    </tr>
+</table>
 <table class="center">
     <tr>
     <td><img src="media/gallery/initimg/fireplace.png"></td>

@@ -503,6 +503,23 @@ class AnimationPipeline(DiffusionPipeline):
                 num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
                 # print('new_total', (int(total-((latents.shape[2]/overlap)*offset))))
 
+
+
+                print('num_warmup_steps', num_warmup_steps)
+                print('len(timesteps)', len(timesteps))
+                print('num_inference_steps', num_inference_steps)
+                print('self.scheduler.order', self.scheduler.order)
+                print('num_inference_steps-offset', num_inference_steps-offset)
+                print('num_inference_steps+offset', num_inference_steps+offset)
+                print("temporal_context", temporal_context)
+                print("strides", strides)
+                print("latents.shape[2]", latents.shape[2])
+                print("overlap", overlap)
+                print('total', total)
+                print('steps_diff', steps_diff)
+
+
+
                 window.write_event_value('-total_steps_progress_bar-',(total-((latents.shape[2]/overlap)*offset)))
 
                 steps_idx = 0

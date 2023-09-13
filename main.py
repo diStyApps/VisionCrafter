@@ -31,6 +31,7 @@ from util.sliders import sliders
 from util.ui_tools import flatten_ui_elements,expand_column_helper,clear_items_keys
 from util.vlc import init_vlc_player,add_and_play_video
 from util.musicgen import add_audio_to_video
+from util.wildcards import replace_wildcards_in_text
 
 current_folder = os.getcwd()
 
@@ -69,8 +70,46 @@ def main():
                 ],expand_x=True,element_justification='l',relief=sg.RELIEF_FLAT,border_width=0,background_color=color.GRAY_9900,vertical_alignment='center',visible=True),                                 
 
         ],
+                [
+                    sg.Frame('Add Music',[
+                        [    
+                                sg.Frame('Prompt',[
+                                    [    
+                                        sg.Frame('',[
+                                            [    
+                                                sg.MLine("Harp,bells,fluts,fantasy,nightelf,wind",key="-add_music_prompt-",visible=True,border_width=0,sbar_width=20,sbar_trough_color=0,no_scrollbar=True,
+                                                autoscroll=False, auto_refresh=True,size=(2,1),pad=(5,5),expand_x=True,expand_y=False,font="Ariel 11"),
+                                            ],     
+                                                                    
+                                                ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=color.DARK_GRAY
+                                            ),
+                                    ], 
+                                    [
+                                        sg.Combo(music_prompts_list, default_value=sg.user_settings_get_entry("selected_music_prompt", ''), size=(40, 10), key="-selected_music_prompt-",expand_x=True,enable_events=True, readonly=True), 
+                                        sg.Button('Set',k='-set_music_prompt-'),    
+                                    ],         
+                                                                    
+                                    ],expand_x=True,element_justification='center',vertical_alignment='center',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=color.GRAY
+                                ),
+                        ],   
+                        [ 
+                                sg.Frame('',[  
+                                    [
+                                        sg.T('Audio models'),
+                                        sg.Combo(audio_model_list, default_value="melody", size=(40, 10), key="-selected_audio_model-",expand_x=False,enable_events=True, readonly=True),                                               
+                                        sg.Checkbox('Add to video',k='-add_music_cb-',default=False),  
+                                    ]  
+                                                        
+                                    ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True
+                                ),
+                        ],                                            
+                        ],expand_x=True,element_justification='l',vertical_alignment='l',relief=sg.RELIEF_SOLID,border_width=0,visible=True,background_color=color.GRAY
+                    ),
+                ],         
         [
+            
                 sg.Frame('Add Post Music ',[
+                      
                 [
                     sg.T('File',s=(10,1)),
                     sg.Input(k='-add_music_post_video_file-',enable_events=True,expand_x=True),sg.FileBrowse(k=f'-post_process_FileBrowse-',file_types=(video_file_ext)) ,     
@@ -136,9 +175,9 @@ def main():
                     ],expand_x=True,element_justification='r',border_width=0,pad=(0,0),relief=sg.RELIEF_FLAT
                 ),
             ],     
-            [
-                sg.Column(models_bar_layout.create_layout(), key=MODELSBAR_COL, element_justification='l', expand_x=True,expand_y=True,visible=True),
-            ],                  
+            # [
+            #     sg.Column(models_bar_layout.create_layout(), key=MODELSBAR_COL, element_justification='l', expand_x=True,expand_y=True,visible=True),
+            # ],                  
             [
                 navigation_layout.create_layout()
             ],                
@@ -175,7 +214,7 @@ def main():
         navigation_layout.handle_tab_event(event, window)
         about_layout.events(event)
         models_bar_layout.events(event,values,window)
-        # txt2vid_layout.events(event,values,window)
+        txt2vid_layout.events(event,values,window)
 
         if event == '-init_img_path-':
             if  len(values['-init_img_path-'].strip())>0:
@@ -192,7 +231,6 @@ def main():
                     sg.Popup("The maximum init image generation size is 512x512")
             else:
                 window.write_event_value('-generate-', values)
-
         if event == '-generate-':
             # print("generate",event)
             prompts  = []
@@ -202,10 +240,18 @@ def main():
             negative_prompt = values['-negative_prompt-']
 
             for i in range(batch_count):
-                prompts.append(prompt)
+                # prompt = replace_wildcards_in_text(prompt)
+
+                # print('prompt',[i],replace_wildcards_in_text(prompt))
+                prompt_w = replace_wildcards_in_text(prompt)
+                prompts.append(prompt_w)
+
+                print(f'Prompt [#{i}] {prompt_w}') 
+                print(f'')
+
                 negative_prompts.append(negative_prompt)
             
-
+            # print("prompts",prompts)
             steps = int(values['-sampling_steps-'])
             cfg_scale = float(values['-cfg_scale-'])
             seed = int(values['-seed-'])
@@ -221,11 +267,15 @@ def main():
             save_gif_format = values['-save_gif_format-']
             save_video_frames = values['-save_video_frames-']
             use_lora = values['-use_lora-']
+
             selected_model = sg.user_settings_get_entry("selected_model", '')
             models_path_directory = sg.user_settings_get_entry("models_path", '')
 
             selected_lora = sg.user_settings_get_entry("selected_lora", '')
             lora_models_path_directory = sg.user_settings_get_entry("lora_models_path", '')
+
+            selected_motion_module = sg.user_settings_get_entry("selected_motion_module", '')
+            motion_modules_path_directory = sg.user_settings_get_entry("motion_modules_path", '')
 
 
             if selected_lora and use_lora:
@@ -237,25 +287,24 @@ def main():
                 models_path_directory = os.path.normpath(os.path.join(current_folder, f"{models_path_directory}/{selected_model}"))
                 base = ""
 
-            motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
-            motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15.ckpt"))
+            # motion_modules_mm_sd_v14 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v14.ckpt"))
+            # motion_modules_mm_sd_v15 = os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/Motion_Module/mm_sd_v15_v2.ckpt"))
+            motion_module = os.path.normpath(os.path.join(current_folder, f"{motion_modules_path_directory}/{selected_motion_module}"))
+
             pretrained_model= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/StableDiffusion/stable-diffusion-v1-5"))
             # embeddings_folder= os.path.normpath(os.path.join(current_folder, "repos/animatediff/models/embeddings"))
 
             config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/prompts/result.yaml"))
-            inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference.yaml"))
-
-            motion_modules = []
-            if values['-motion_module_1.4-']:
-                motion_modules.append(motion_modules_mm_sd_v14)
-            if values['-motion_module_1.5-']:
-                motion_modules.append(motion_modules_mm_sd_v15)
-            if motion_modules:    
+            if is_v2(motion_module):
+                inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference-v2.yaml"))
+            else:
+                inference_config_path = os.path.normpath(os.path.join(current_folder, "repos/animatediff/configs/inference/inference-v1.yaml"))
+            if motion_module:    
                 config = ConfigInit(
                     path=models_path_directory,
                     base=base,
                     additional_networks=[],
-                    motion_module=motion_modules,
+                    motion_module=motion_module,
                     seed=seed,
                     steps=steps,
                     guidance_scale=cfg_scale,
@@ -357,13 +406,7 @@ def main():
                 startfile_path = os.path.dirname(add_music_post_video_path)        
                 os.startfile(os.path.abspath(startfile_path))
 
-        if event == '-set_prompt-':
-            prompt = values['-selected_prompt-']
-            window['-prompt-'].update(prompt)
 
-        if event == '-set_neg_prompt-':
-            prompt = values['-selected_neg_prompt-']
-            window['-negative_prompt-'].update(prompt)
 
         if event == '-set_music_prompt-':
             prompt = values['-selected_music_prompt-']
@@ -471,7 +514,10 @@ def btn(name):
     return sg.Button(name, size=(6, 1),expand_x=True)
 
 
-
+def is_v2(filename):
+    """Check if the filename (without extension) ends with 'v2'."""
+    name_without_extension = filename.rsplit('.', 1)[0]
+    return name_without_extension.endswith("v2")
 
 if __name__ == '__main__':
     sg.set_options(
@@ -481,5 +527,16 @@ if __name__ == '__main__':
         sbar_relief=sg.RELIEF_FLAT,        
         sbar_width=15,sbar_trough_color=0,
     )    
-    
+    audio_model_list = [
+        "melody",
+        "small",
+        "medium",
+        "large",
+    ]
+    music_prompts_list = [
+        "drum and bass beat with intense percussions",
+        "classic reggae track with an electronic guitar solo",
+        "80s electronic track with melodic synthesizers, catchy beat and groovy bass",
+        "Pop dance track with catchy melodies, tropical percussion, and upbeat rhythms, perfect for the beach",
+    ]    
     main()

@@ -1,4 +1,4 @@
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 APP_NAME =  'VisionCrafter'
 APP_TITLE = f"{APP_NAME} - {VERSION}"
 GITHUB = "github.com/diStyApps/VisionCrafter"
@@ -16,6 +16,8 @@ video_file_ext = {
 }
 
 extensions = [".safetensors"]
+motion_modules_extensions = [".ckpt",".pth"]
+
 
 FONT = 'Arial 12'
 FONT_S = 'Arial 8'
